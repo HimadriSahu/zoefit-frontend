@@ -32,6 +32,56 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Temporary folders
+tmp/
+temp/
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Windows
+*.lnk
 
 # typescript
 *.tsbuildinfo
@@ -41,3 +91,38 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Expo specific
+.expo-shared/
+
+# React Native
+*.hprof
+
+# Bundle artifacts
+*.jsbundle
+
+# CocoaPods
+/ios/Pods/
+/ios/Podfile.lock
+
+# Flipper
+/ios/Flipper-Folly
+
+# Fastlane
+/fastlane/report.xml
+/fastlane/Preview.html
+/fastlane/screenshots
+/fastlane/test_output
+
+# Package manager lock files (keeping only package-lock.json for this project)
+yarn.lock
+pnpm-lock.yaml
+
+# Testing
+/jest/
+test-results/
+playwright-report/
+
+# Misc
+*.tgz
+*.tar.gz
