@@ -18,6 +18,54 @@ const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email address first');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await authService.forgotPassword(email.trim());
+      
+      Alert.alert(
+        '✅ Password Reset Sent',
+        response.message + (response.note ? `\n\n${response.note}` : ''),
+        [
+          {
+            text: 'OK',
+            style: 'default',
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      
+      let errorMessage = 'Failed to send password reset email. Please try again.';
+      
+      if (error.error) {
+        errorMessage = error.error;
+      } else if (error.detail) {
+        errorMessage = error.detail;
+      } else if (error.error) {
+        errorMessage = error.error;
+      }
+      
+      Alert.alert(
+        'Password Reset Failed',
+        errorMessage,
+        [
+          {
+            text: 'Try Again',
+            style: 'default',
+          },
+        ]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async () => {
     // Basic validation
     if (!email.trim() || !password.trim()) {
@@ -108,6 +156,13 @@ const LoginScreen = () => {
         />
 
         <TouchableOpacity 
+          style={styles.forgotPasswordButton}
+          onPress={handleForgotPassword}
+        >
+          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
           style={[styles.button, loading && styles.buttonDisabled]} 
           onPress={handleLogin}
           disabled={loading}
@@ -196,6 +251,16 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#2E7D32',
     fontWeight: 'bold',
+    textDecorationLine: 'underline',
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginTop: 5,
+    marginBottom: 10,
+  },
+  forgotPasswordText: {
+    color: '#2E7D32',
+    fontSize: 14,
     textDecorationLine: 'underline',
   },
   motivationalText: {

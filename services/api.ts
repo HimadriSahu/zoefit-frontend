@@ -1,5 +1,5 @@
 // API service for ZoeFit authentication
-const API_BASE_URL = __DEV__ ? 'http://10.253.108.221:8000' : 'https://your-production-api.com';
+import { getApiBaseUrl, getApiBaseUrlSync } from '../config/apiConfig';
 
 export interface LoginData {
   email: string;
@@ -34,15 +34,38 @@ export interface ApiError {
 
 class ApiService {
   private baseURL: string;
+  private isInitialized: boolean = false;
 
   constructor() {
-    this.baseURL = API_BASE_URL;
+    // Use synchronous URL for immediate initialization
+    this.baseURL = getApiBaseUrlSync();
+    this.initializeAsync();
+  }
+
+  // Async initialization to find the best working URL
+  private async initializeAsync() {
+    try {
+      const bestUrl = await getApiBaseUrl();
+      if (bestUrl !== this.baseURL) {
+        this.baseURL = bestUrl;
+        console.log('🔄 Updated API URL to:', this.baseURL);
+      }
+      this.isInitialized = true;
+    } catch (error) {
+      console.error('Failed to initialize API URL:', error);
+      this.isInitialized = true; // Continue with fallback URL
+    }
   }
 
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    // Wait for initialization if not ready
+    if (!this.isInitialized) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     const url = `${this.baseURL}/api/auth${endpoint}`;
     
     console.log('🌐 API Request:', { url, method: options.method || 'GET' });
@@ -79,6 +102,35 @@ class ApiService {
       return data as T;
     } catch (error) {
       console.error('❌ API Error:', error);
+      
+      // If it's a network error, try to reconnect with a different URL
+      if (error instanceof Error && error.message.includes('Network request failed')) {
+        console.log('🔄 Network error detected, trying to reconnect...');
+        try {
+          const newUrl = await getApiBaseUrl();
+          if (newUrl !== this.baseURL) {
+            this.baseURL = newUrl;
+            console.log('🔄 Retrying with new URL:', this.baseURL);
+            
+            // Retry the request with the new URL
+            const retryUrl = `${this.baseURL}/api/auth${endpoint}`;
+            const response = await fetch(retryUrl, config);
+            const data = await response.json();
+            
+            if (!response.ok) {
+              throw {
+                status: response.status,
+                ...data,
+              } as ApiError;
+            }
+            
+            return data as T;
+          }
+        } catch (retryError) {
+          console.error('❌ Retry failed:', retryError);
+        }
+      }
+      
       if (error instanceof Error) {
         throw {
           error: 'Network error',
@@ -103,7 +155,19 @@ class ApiService {
     });
   }
 
+  async forgotPassword(email: string): Promise<{ message: string; note?: string }> {
+    return this.request<{ message: string; note?: string }>('/forgot-password/', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
   async logout(refreshToken: string, accessToken: string): Promise<{ message: string }> {
+    // Wait for initialization if not ready
+    if (!this.isInitialized) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     const url = `${this.baseURL}/api/auth/logout/`;
     const body = JSON.stringify({ refresh_token: refreshToken });
     

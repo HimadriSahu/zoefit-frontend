@@ -45,6 +45,14 @@ class AuthService {
     }
   }
 
+  async forgotPassword(email: string): Promise<{ message: string; note?: string }> {
+    try {
+      return await apiService.forgotPassword(email);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async logout(): Promise<void> {
     try {
       const refreshToken = await this.getRefreshToken();
