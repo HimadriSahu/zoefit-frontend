@@ -68,7 +68,7 @@ export default function Index() {
   }
 
   if (isAuthenticated) {
-    return <Redirect href="/(tabs)/home" />;
+    return <Redirect href="/Zoefit/home" />;
   }
 
   return <Redirect href="/LoginScreen" />;

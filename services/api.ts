@@ -52,8 +52,8 @@ class ApiService {
       }
       this.isInitialized = true;
     } catch (error) {
-      console.error('Failed to initialize API URL:', error);
-      this.isInitialized = true; // Continue with fallback URL
+      console.warn('⚠️ API initialization failed, using fallback URL');
+      this.isInitialized = true;
     }
   }
 

@@ -5,12 +5,12 @@ const API_CONFIG = {
   // Production URL
   production: 'https://your-production-api.com',
   
-  // Development URLs in order of preference
+// Development URLs in order of preference
   development: [
-    'http://10.67.28.221:8000', // Your current IP - try first
+    'http://10.0.2.2:8000', // Android emulator localhost
     'http://localhost:8000',
     'http://127.0.0.1:8000', 
-    'http://10.0.2.2:8000', // Android emulator
+    'http://192.168.1.4:8000', // Current machine IP
     'http://192.168.1.5:8000', // Common local network
   ],
   
@@ -71,12 +71,12 @@ export const getApiBaseUrlSync = (): string => {
   
   // Return the most likely working URL based on platform
   if (isAndroid) {
-    return API_CONFIG.development[2]; // Android emulator
+    return 'http://10.0.2.2:8000'; // Android emulator localhost
   } else if (isIOS) {
-    return API_CONFIG.development[0]; // iOS simulator
+    return 'http://127.0.0.1:8000'; // iOS simulator localhost
   }
   
-  return API_CONFIG.development[0]; // Updated current IP - first priority
+  return API_CONFIG.development[0]; // Web/other - localhost:8000
 };
 
 // Export configuration

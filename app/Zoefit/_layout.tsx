@@ -30,6 +30,7 @@ export default function TabLayout() {
             <Ionicons name="home" size={size} color={color} />
           ),
           headerShown: false,
+          // headerTitle: 'ZoeFit',
         }}
       />
       <Tabs.Screen
@@ -40,6 +41,7 @@ export default function TabLayout() {
             <Ionicons name="fitness" size={size} color={color} />
           ),
           headerShown: false,
+          // headerTitle: 'ZoeFit',
         }}
       />
       <Tabs.Screen
@@ -50,6 +52,7 @@ export default function TabLayout() {
             <Ionicons name="nutrition" size={size} color={color} />
           ),
           headerShown: false,
+          // headerTitle: 'ZoeFit',
         }}
       />
       <Tabs.Screen
@@ -60,6 +63,7 @@ export default function TabLayout() {
             <Ionicons name="person" size={size} color={color} />
           ),
           headerShown: false,
+          // headerTitle: 'ZoeFit',
         }}
       />
     </Tabs>

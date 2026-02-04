@@ -35,17 +35,17 @@ const HomeScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionGrid}>
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/start-workout')}>
               <Text style={styles.actionIcon}>🏃‍♂️</Text>
               <Text style={styles.actionTitle}>Start Workout</Text>
               <Text style={styles.actionSubtitle}>Begin your session</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/screens/progress')}>
               <Text style={styles.actionIcon}>📊</Text>
               <Text style={styles.actionTitle}>Track Progress</Text>
               <Text style={styles.actionSubtitle}>View your stats</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
+            {/* <TouchableOpacity style={styles.actionCard}>
               <Text style={styles.actionIcon}>🥗</Text>
               <Text style={styles.actionTitle}>Log Meal</Text>
               <Text style={styles.actionSubtitle}>Track nutrition</Text>
@@ -54,7 +54,7 @@ const HomeScreen = () => {
               <Text style={styles.actionIcon}>🎯</Text>
               <Text style={styles.actionTitle}>Set Goals</Text>
               <Text style={styles.actionSubtitle}>Define targets</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
 
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    backgroundColor: '#2E7D32',
+    backgroundColor: '#46b24bff',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },

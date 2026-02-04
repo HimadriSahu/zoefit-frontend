@@ -14,13 +14,24 @@ The app now automatically handles different IP addresses and network configurati
 ### 🔧 How It Works
 
 The new `apiConfig.ts` automatically tests these URLs in order:
-- `http://localhost:8000` (iOS Simulator)
+- `http://10.0.2.2:8000` (Android Emulator - highest priority)
+- `http://10.67.28.221:8000` (Your current IP)
+- `http://localhost:8000` (Local development)
 - `http://127.0.0.1:8000` (Local development)
-- `http://10.0.2.2:8000` (Android Emulator)
 - `http://192.168.1.5:8000` (Common local network)
-- `http://10.253.108.221:8000` (Your current IP)
 
-### 📱 Platform-Specific Setup
+### � Backend Server Setup
+
+**Important**: For React Native development, start your Django server with:
+
+```bash
+cd backend/back/zoefit
+python manage.py runserver 0.0.0.0:8000
+```
+
+This binds the server to all network interfaces, allowing the emulator to connect. The default `python manage.py runserver` only binds to `127.0.0.1:8000` which is not accessible from emulators.
+
+### �📱 Platform-Specific Setup
 
 #### For Android Development:
 - **Emulator**: Uses `10.0.2.2` automatically

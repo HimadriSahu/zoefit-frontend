@@ -86,7 +86,7 @@ const LoginScreen = () => {
             text: 'Let\'s Go!',
             onPress: () => {
               // Navigate to main app or dashboard
-              router.replace('/(tabs)/home');
+              router.replace('/Zoefit/home');
             },
           },
         ]
