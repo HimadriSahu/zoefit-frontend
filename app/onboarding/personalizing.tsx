@@ -70,7 +70,7 @@ export default function PersonalizingScreen() {
               goals based on your profile.
             </Text>
             <TouchableOpacity style={styles.button} onPress={handleFinish}>
-              <Text style={styles.buttonText}>Go to Home</Text>
+              <Text style={styles.buttonText}>Go to Welcome</Text>
             </TouchableOpacity>
           </>
         )}

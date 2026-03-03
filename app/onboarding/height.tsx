@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useOnboarding } from '../Zoefit/context/OnboardingContext';
+import { useOnboarding } from '../screens/OnboardingContext';
 
 export default function HeightScreen() {
   const router = useRouter();

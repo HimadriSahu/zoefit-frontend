@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useOnboarding } from '../Zoefit/context/OnboardingContext';
+import { useOnboarding } from '../screens/OnboardingContext';
 
 function isValidDate(str: string): boolean {
   const match = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);

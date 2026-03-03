@@ -1,8 +1,11 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '../../services/auth';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const ProfileScreen = () => {
   const router = useRouter();
@@ -60,9 +63,14 @@ const ProfileScreen = () => {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+    <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <LinearGradient
+          colors={['#667eea', '#764ba2', '#f093fb']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
           <View style={styles.profileHeader}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>💪</Text>
@@ -73,111 +81,122 @@ const ProfileScreen = () => {
               <Text style={styles.memberSince}>Member since {profileData.memberSince}</Text>
             </View>
           </View>
-        </View>
+        </LinearGradient>
 
-        <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Your Progress</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{profileData.totalWorkouts}</Text>
-              <Text style={styles.statLabel}>Workouts</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{profileData.totalCalories.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Calories</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{profileData.streak}</Text>
-              <Text style={styles.statLabel}>Day Streak</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.levelContainer}>
-          <Text style={styles.sectionTitle}>Fitness Level</Text>
-          <View style={styles.levelCard}>
-            <Text style={styles.levelText}>{profileData.level}</Text>
-            <Text style={styles.levelDescription}>Keep pushing to reach Advanced!</Text>
-            <View style={styles.levelProgress}>
-              <View style={styles.levelProgressBar}>
-                <View style={[styles.levelProgressFill, { width: '65%' }]} />
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.statsContainer}>
+            <Text style={styles.sectionTitle}>Your Progress</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{profileData.totalWorkouts}</Text>
+                <Text style={styles.statLabel}>Workouts</Text>
               </View>
-              <Text style={styles.levelProgressText}>65% to Advanced</Text>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{profileData.totalCalories.toLocaleString()}</Text>
+                <Text style={styles.statLabel}>Calories</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{profileData.streak}</Text>
+                <Text style={styles.statLabel}>Day Streak</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.achievementsContainer}>
-          <Text style={styles.sectionTitle}>Achievements</Text>
-          <View style={styles.achievementsGrid}>
-            {achievements.map((achievement) => (
-              <View 
-                key={achievement.id} 
-                style={[styles.achievementCard, !achievement.earned && styles.achievementLocked]}
+          <View style={styles.levelContainer}>
+            <Text style={styles.sectionTitle}>Fitness Level</Text>
+            <View style={styles.levelCard}>
+              <Text style={styles.levelText}>{profileData.level}</Text>
+              <Text style={styles.levelDescription}>Keep pushing to reach Advanced!</Text>
+              <View style={styles.levelProgress}>
+                <View style={styles.levelProgressBar}>
+                  <View style={[styles.levelProgressFill, { width: '65%' }]} />
+                </View>
+                <Text style={styles.levelProgressText}>65% to Advanced</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.achievementsContainer}>
+            <Text style={styles.sectionTitle}>Achievements</Text>
+            <View style={styles.achievementsGrid}>
+              {achievements.map((achievement) => (
+                <View 
+                  key={achievement.id} 
+                  style={[styles.achievementCard, !achievement.earned && styles.achievementLocked]}
+                >
+                  <Text style={[styles.achievementIcon, !achievement.earned && styles.achievementIconLocked]}>
+                    {achievement.icon}
+                  </Text>
+                  <Text style={[styles.achievementName, !achievement.earned && styles.achievementNameLocked]}>
+                    {achievement.name}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.menuContainer}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            {menuItems.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.menuItem}
+                onPress={() => {
+                  if (item.screen === '/personal-info') {
+                    router.push('/screens/personal-info');
+                  } else if (item.screen === '/settings') {
+                    router.push('/screens/settings');
+                  } else {
+                    Alert.alert('Coming Soon', `${item.title} feature is coming soon!`);
+                  }
+                }}
               >
-                <Text style={[styles.achievementIcon, !achievement.earned && styles.achievementIconLocked]}>
-                  {achievement.icon}
-                </Text>
-                <Text style={[styles.achievementName, !achievement.earned && styles.achievementNameLocked]}>
-                  {achievement.name}
-                </Text>
-              </View>
+                <Text style={styles.menuIcon}>{item.icon}</Text>
+                <Text style={styles.menuTitle}>{item.title}</Text>
+                <Text style={styles.menuArrow}>›</Text>
+              </TouchableOpacity>
             ))}
           </View>
-        </View>
 
-        <View style={styles.menuContainer}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.menuItem}
-              onPress={() => {
-                if (item.screen === '/personal-info') {
-                  router.push('/Zoefit/personal-info');
-                } else {
-                  Alert.alert('Coming Soon', `${item.title} feature is coming soon!`);
-                }
-              }}
-            >
-              <Text style={styles.menuIcon}>{item.icon}</Text>
-              <Text style={styles.menuTitle}>{item.title}</Text>
-              <Text style={styles.menuArrow}>›</Text>
+          <View style={styles.logoutContainer}>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <LinearGradient
+                colors={['#ff6b6b', '#ee5a24']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.logoutGradient}
+              >
+                <Text style={styles.logoutIcon}>🚪</Text>
+                <Text style={styles.logoutText}>Logout</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
 
-        <View style={styles.logoutContainer}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutIcon}>🚪</Text>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>ZoeFit Version 1.0.0</Text>
-          <Text style={styles.versionSubtext}>Made with ❤️ for your fitness journey</Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.versionContainer}>
+            <Text style={styles.versionText}>ZoeFit Version 1.0.0</Text>
+            <Text style={styles.versionSubtext}>Made with ❤️ for your fitness journey</Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default ProfileScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8faf8',
-  },
   scrollView: {
     flex: 1,
   },
   header: {
     padding: 20,
-    backgroundColor: '#2E7D32',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
   },
   profileHeader: {
     flexDirection: 'row',
@@ -187,10 +206,12 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   avatarText: {
     fontSize: 32,
@@ -203,24 +224,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 5,
+    textShadowColor: '#764ba2',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   profileEmail: {
     fontSize: 14,
-    color: '#e8f5e9',
+    color: '#e0e7ff',
     marginBottom: 3,
   },
   memberSince: {
     fontSize: 12,
-    color: '#c8e6c9',
+    color: 'rgba(255,255,255,0.8)',
   },
   statsContainer: {
     padding: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 15,
+    letterSpacing: 0.5,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -228,50 +253,56 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 18,
     padding: 20,
     marginHorizontal: 5,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#fff',
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 5,
   },
   levelContainer: {
     padding: 20,
   },
   levelCard: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 18,
     padding: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
   levelText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#fff',
     textAlign: 'center',
     marginBottom: 5,
   },
   levelDescription: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     marginBottom: 15,
   },
@@ -281,18 +312,18 @@ const styles = StyleSheet.create({
   levelProgressBar: {
     width: '100%',
     height: 8,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 4,
     marginBottom: 8,
   },
   levelProgressFill: {
     height: '100%',
-    backgroundColor: '#2E7D32',
+    backgroundColor: '#a78bfa',
     borderRadius: 4,
   },
   levelProgressText: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
   },
   achievementsContainer: {
     padding: 20,
@@ -304,19 +335,18 @@ const styles = StyleSheet.create({
   },
   achievementCard: {
     width: '30%',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
     borderRadius: 15,
     padding: 15,
     alignItems: 'center',
     marginBottom: 15,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   achievementLocked: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    opacity: 0.6,
   },
   achievementIcon: {
     fontSize: 24,
@@ -327,11 +357,12 @@ const styles = StyleSheet.create({
   },
   achievementName: {
     fontSize: 10,
-    color: '#333',
+    color: '#fff',
     textAlign: 'center',
+    fontWeight: '600',
   },
   achievementNameLocked: {
-    color: '#999',
+    color: 'rgba(255,255,255,0.5)',
   },
   menuContainer: {
     padding: 20,
@@ -339,15 +370,13 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
     borderRadius: 15,
     padding: 18,
     marginBottom: 10,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   menuIcon: {
     fontSize: 20,
@@ -356,28 +385,31 @@ const styles = StyleSheet.create({
   menuTitle: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: '#fff',
+    fontWeight: '600',
   },
   menuArrow: {
     fontSize: 20,
-    color: '#ccc',
+    color: 'rgba(255,255,255,0.6)',
   },
   logoutContainer: {
     padding: 20,
     paddingTop: 0,
   },
   logoutButton: {
+    borderRadius: 15,
+    shadowColor: '#ff6b6b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  logoutGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF6B6B',
-    borderRadius: 15,
     padding: 18,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderRadius: 15,
   },
   logoutIcon: {
     fontSize: 20,
@@ -394,11 +426,11 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: '#999',
+    color: 'rgba(255,255,255,0.6)',
     marginBottom: 5,
   },
   versionSubtext: {
     fontSize: 10,
-    color: '#ccc',
+    color: 'rgba(255,255,255,0.4)',
   },
 });

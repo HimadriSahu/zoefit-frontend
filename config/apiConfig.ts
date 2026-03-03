@@ -10,7 +10,7 @@ const API_CONFIG = {
     'http://10.0.2.2:8000', // Android emulator → host machine localhost (try first when on Android)
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-    'http://192.168.1.4:8000', // Current machine IP
+    'http://192.168.1.2:8000', // Current machine IP
     'http://172.23.148.1:8000', // Common local network
     'http://192.168.0.192:8000',
     'http://10.189.95.1:8001',

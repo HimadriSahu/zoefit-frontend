@@ -34,6 +34,7 @@ interface OnboardingContextType {
   setBreakfastTime: (t: string) => void;
   setDinnerTime: (t: string) => void;
   reset: () => Promise<void>;
+  isOnboardingComplete: () => boolean;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | null>(null);
@@ -96,6 +97,18 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const isOnboardingComplete = (): boolean => {
+    return !!(
+      data.gender &&
+      data.birthday &&
+      data.heightCm &&
+      data.weightKg &&
+      data.goal &&
+      data.breakfastTime &&
+      data.dinnerTime
+    );
+  };
+
   return (
     <OnboardingContext.Provider
       value={{
@@ -108,6 +121,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         setBreakfastTime,
         setDinnerTime,
         reset,
+        isOnboardingComplete,
       }}
     >
       {children}
@@ -119,4 +133,9 @@ export function useOnboarding() {
   const ctx = useContext(OnboardingContext);
   if (!ctx) throw new Error('useOnboarding must be used within OnboardingProvider');
   return ctx;
+}
+
+// Default export to prevent expo-router from treating this as a route
+export default function OnboardingContextComponent() {
+  return null;
 }

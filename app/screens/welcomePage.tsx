@@ -32,7 +32,7 @@ export default function WelcomePage() {
         {/* Start Button */}
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.replace('/(tabs)/home' as any)}
+          onPress={() => router.replace('/Zoefit/home')}
         >
           <Text style={styles.buttonText}>Start!</Text>
           <Text style={styles.arrow}>{'>>>>'}</Text>

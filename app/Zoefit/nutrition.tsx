@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Dimensions, TextStyle, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const NutritionScreen = () => {
   const [, setSelectedMeal] = useState<string | null>(null);
@@ -136,9 +139,14 @@ const NutritionScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+    <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <LinearGradient
+          colors={['#667eea', '#764ba2', '#f093fb']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
           <View>
             <Text style={styles.title}>Nutrition 🥗</Text>
             <Text style={styles.subtitle}>Fuel your fitness journey</Text>
@@ -147,11 +155,19 @@ const NutritionScreen = () => {
             style={styles.personalizeButton}
             onPress={() => router.push('/onboarding' as any)}
           >
-            <Text style={styles.personalizeButtonText}>Personalize Nutrio</Text>
+            <LinearGradient
+              colors={['#a78bfa', '#8b5cf6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.personalizeGradient}
+            >
+              <Text style={styles.personalizeButtonText}>Personalize ZoeFit</Text>
+            </LinearGradient>
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
-        <View style={styles.statsContainer}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.statsContainer}>
           <Text style={styles.statsTitle}>{"Today's Nutrition"}</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
@@ -207,13 +223,27 @@ const NutritionScreen = () => {
             style={styles.actionButton}
             onPress={() => setShowCustomMealModal(true)}
           >
-            <Text style={styles.actionButtonText}>+ Add Meal</Text>
+            <LinearGradient
+              colors={['#667eea', '#764ba2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.actionButtonGradient}
+            >
+              <Text style={styles.actionButtonText}>+ Add Meal</Text>
+            </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.actionButton}
             onPress={() => setShowGoalsModal(true)}
           >
-            <Text style={styles.actionButtonText}>⚙️ Edit Goals</Text>
+            <LinearGradient
+              colors={['#a78bfa', '#8b5cf6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.actionButtonGradient}
+            >
+              <Text style={styles.actionButtonText}>⚙️ Edit Goals</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -221,7 +251,7 @@ const NutritionScreen = () => {
           <TextInput
             style={styles.searchInput}
             placeholder="Search meals..."
-            placeholderTextColor="#999"
+            placeholderTextColor="rgba(255,255,255,0.6)"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -272,9 +302,16 @@ const NutritionScreen = () => {
                   onPress={() => logMeal(meal.id)}
                   disabled={loggedMeals.includes(meal.id)}
                 >
-                  <Text style={styles.logButtonText}>
-                    {loggedMeals.includes(meal.id) ? 'Logged ✓' : 'Log This Meal'}
-                  </Text>
+                  <LinearGradient
+                    colors={loggedMeals.includes(meal.id) ? ['#4a5568', '#2d3748'] : ['#667eea', '#764ba2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.logButtonGradient}
+                  >
+                    <Text style={styles.logButtonText}>
+                      {loggedMeals.includes(meal.id) ? 'Logged ✓' : 'Log This Meal'}
+                    </Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             ))
@@ -293,11 +330,18 @@ const NutritionScreen = () => {
         )}
 
         <View style={styles.tipsContainer}>
-          <Text style={styles.tipsTitle}>🍎 Nutrition Tips</Text>
-          <Text style={styles.tip}>• Eat protein with every meal to support muscle growth</Text>
-          <Text style={styles.tip}>• Choose complex carbs for sustained energy</Text>
-          <Text style={styles.tip}>• Stay hydrated - aim for 8 glasses of water daily</Text>
-          <Text style={styles.tip}>• Time your meals around your workouts for optimal performance</Text>
+          <LinearGradient
+            colors={['#2196f3', '#1976d2']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tipsGradient}
+          >
+            <Text style={styles.tipsTitle}>🍎 Nutrition Tips</Text>
+            <Text style={styles.tip}>• Eat protein with every meal to support muscle growth</Text>
+            <Text style={styles.tip}>• Choose complex carbs for sustained energy</Text>
+            <Text style={styles.tip}>• Stay hydrated - aim for 8 glasses of water daily</Text>
+            <Text style={styles.tip}>• Time your meals around your workouts for optimal performance</Text>
+          </LinearGradient>
         </View>
 
         {/* Custom Meal Modal */}
@@ -312,12 +356,14 @@ const NutritionScreen = () => {
               <TextInput
                 style={styles.modalInput}
                 placeholder="Meal name"
+                placeholderTextColor="#999"
                 value={customMealName}
                 onChangeText={setCustomMealName}
               />
               <TextInput
                 style={styles.modalInput}
                 placeholder="Calories"
+                placeholderTextColor="#999"
                 keyboardType="numeric"
                 value={customMealCalories}
                 onChangeText={setCustomMealCalories}
@@ -333,7 +379,14 @@ const NutritionScreen = () => {
                   style={[styles.modalButton, styles.modalButtonPrimary]}
                   onPress={addCustomMeal}
                 >
-                  <Text style={[styles.modalButtonText, { color: '#fff' }]}>Add</Text>
+                  <LinearGradient
+                    colors={['#667eea', '#764ba2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.modalButtonGradient}
+                  >
+                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>Add</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
@@ -353,6 +406,7 @@ const NutritionScreen = () => {
                 <Text style={styles.goalLabel}>Daily Calorie Goal</Text>
                 <TextInput
                   style={styles.modalInput}
+                  placeholderTextColor="#999"
                   keyboardType="numeric"
                   value={calorieGoal.toString()}
                   onChangeText={(text) => setCalorieGoal(parseInt(text) || 2000)}
@@ -362,6 +416,7 @@ const NutritionScreen = () => {
                 <Text style={styles.goalLabel}>Daily Protein Goal (g)</Text>
                 <TextInput
                   style={styles.modalInput}
+                  placeholderTextColor="#999"
                   keyboardType="numeric"
                   value={proteinGoal.toString()}
                   onChangeText={(text) => setProteinGoal(parseInt(text) || 120)}
@@ -371,6 +426,7 @@ const NutritionScreen = () => {
                 <Text style={styles.goalLabel}>Daily Water Goal (glasses)</Text>
                 <TextInput
                   style={styles.modalInput}
+                  placeholderTextColor="#999"
                   keyboardType="numeric"
                   value={waterGoal.toString()}
                   onChangeText={(text) => setWaterGoal(parseInt(text) || 8)}
@@ -387,7 +443,14 @@ const NutritionScreen = () => {
                   style={[styles.modalButton, styles.modalButtonPrimary]}
                   onPress={updateGoals}
                 >
-                  <Text style={[styles.modalButtonText, { color: '#fff' }]}>Save</Text>
+                  <LinearGradient
+                    colors={['#667eea', '#764ba2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.modalButtonGradient}
+                  >
+                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>Save</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
@@ -395,59 +458,143 @@ const NutritionScreen = () => {
         </Modal>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 };
 
 export default NutritionScreen;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8faf8',
-  },
+const styles = StyleSheet.create<{
+  scrollView: ViewStyle;
+  header: ViewStyle;
+  title: TextStyle;
+  subtitle: TextStyle;
+  personalizeButton: ViewStyle;
+  personalizeGradient: ViewStyle;
+  personalizeButtonText: TextStyle;
+  statsContainer: ViewStyle;
+  statsTitle: TextStyle;
+  statsGrid: ViewStyle;
+  statCard: ViewStyle;
+  statNumber: TextStyle;
+  statLabel: TextStyle;
+  statGoal: TextStyle;
+  progressBar: ViewStyle;
+  progressFill: ViewStyle;
+  quickActionsContainer: ViewStyle;
+  quickActionButton: ViewStyle;
+  quickActionIcon: TextStyle;
+  quickActionText: TextStyle;
+  quickActionCard: ViewStyle;
+  quickActionLabel: TextStyle;
+  waterButtonsRow: ViewStyle;
+  waterButton: ViewStyle;
+  waterButtonText: TextStyle;
+  waterCount: TextStyle;
+  actionButtonsRow: ViewStyle;
+  actionButton: ViewStyle;
+  actionButtonGradient: ViewStyle;
+  actionButtonText: TextStyle;
+  mealsContainer: ViewStyle;
+  sectionTitle: TextStyle;
+  mealCard: ViewStyle;
+  mealHeader: ViewStyle;
+  mealName: TextStyle;
+  mealMeta: ViewStyle;
+  mealTypeBadge: ViewStyle;
+  mealTypeText: TextStyle;
+  mealTime: TextStyle;
+  calorieBadge: ViewStyle;
+  calorieText: TextStyle;
+  macrosContainer: ViewStyle;
+  macroItem: ViewStyle;
+  macroValue: TextStyle;
+  macroLabel: TextStyle;
+  ingredientsContainer: ViewStyle;
+  ingredientsTitle: TextStyle;
+  ingredientsList: TextStyle;
+  logButton: ViewStyle;
+  logButtonGradient: ViewStyle;
+  logButtonActive: ViewStyle;
+  logButtonText: TextStyle;
+  tipsContainer: ViewStyle;
+  tipsGradient: ViewStyle;
+  tipsTitle: TextStyle;
+  tip: TextStyle;
+  searchContainer: ViewStyle;
+  searchInput: TextStyle;
+  noResultsContainer: ViewStyle;
+  noResultsText: TextStyle;
+  loggedMealsContainer: ViewStyle;
+  loggedMealsTitle: TextStyle;
+  loggedCaloriesText: TextStyle;
+  modalOverlay: ViewStyle;
+  modalContent: ViewStyle;
+  modalTitle: TextStyle;
+  modalInput: TextStyle;
+  goalInputContainer: ViewStyle;
+  goalLabel: TextStyle;
+  modalButtonsRow: ViewStyle;
+  modalButton: ViewStyle;
+  modalButtonGradient: ViewStyle;
+  modalButtonPrimary: ViewStyle;
+  modalButtonText: TextStyle;
+}>({
   scrollView: {
     flex: 1,
   },
   header: {
     padding: 20,
-    backgroundColor: '#4CAF50',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  personalizeButton: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  personalizeButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
+    marginHorizontal: 4,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 5,
+    textShadowColor: '#764ba2',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#e8f5e9',
+    color: '#e0e7ff',
+    fontWeight: '500',
+  },
+  personalizeButton: {
+    borderRadius: 15,
+  },
+  personalizeGradient: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  personalizeButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
   },
   statsContainer: {
     padding: 20,
   },
   statsTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 15,
+    letterSpacing: 0.5,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -455,41 +602,44 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 18,
     padding: 15,
     marginHorizontal: 5,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
   statNumber: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#fff',
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
   statGoal: {
     fontSize: 10,
-    color: '#999',
+    color: 'rgba(255,255,255,0.6)',
   },
   progressBar: {
     width: '100%',
     height: 4,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 2,
     marginTop: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#a78bfa',
     borderRadius: 2,
   },
   quickActionsContainer: {
@@ -499,15 +649,13 @@ const styles = StyleSheet.create({
   },
   quickActionButton: {
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
     borderRadius: 15,
     padding: 15,
     width: '30%',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   quickActionIcon: {
     fontSize: 24,
@@ -515,7 +663,7 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     fontSize: 12,
-    color: '#333',
+    color: '#fff',
     textAlign: 'center',
   },
   mealsContainer: {
@@ -524,19 +672,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 15,
   },
   mealCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
     borderRadius: 15,
     padding: 20,
     marginBottom: 15,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   mealHeader: {
     flexDirection: 'row',
@@ -547,7 +693,7 @@ const styles = StyleSheet.create({
   mealName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 5,
   },
   mealMeta: {
@@ -567,7 +713,7 @@ const styles = StyleSheet.create({
   },
   mealTime: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
   },
   calorieBadge: {
     backgroundColor: '#FF6B6B',
@@ -584,7 +730,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 15,
-    backgroundColor: '#f8faf8',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 10,
     padding: 10,
   },
@@ -594,11 +740,11 @@ const styles = StyleSheet.create({
   macroValue: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
   },
   macroLabel: {
     fontSize: 10,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
   ingredientsContainer: {
@@ -607,22 +753,24 @@ const styles = StyleSheet.create({
   ingredientsTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 5,
   },
   ingredientsList: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
     lineHeight: 16,
   },
   logButton: {
-    backgroundColor: '#4CAF50',
     borderRadius: 10,
+  },
+  logButtonGradient: {
     padding: 12,
+    borderRadius: 10,
     alignItems: 'center',
   },
   logButtonActive: {
-    backgroundColor: '#a5d6a7',
+    opacity: 0.7,
   },
   logButtonText: {
     fontSize: 14,
@@ -631,46 +779,48 @@ const styles = StyleSheet.create({
   },
   tipsContainer: {
     padding: 20,
-    backgroundColor: '#f0f8f0',
     margin: 20,
+    borderRadius: 15,
+  },
+  tipsGradient: {
+    padding: 20,
     borderRadius: 15,
   },
   tipsTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: '#fff',
     marginBottom: 10,
   },
   tip: {
     fontSize: 14,
-    color: '#666',
+    color: '#fff',
     marginBottom: 5,
+    opacity: 0.95,
   },
   quickActionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 18,
     padding: 15,
     width: '100%',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   quickActionLabel: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 10,
   },
   waterButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 15,
+    marginHorizontal: 7,
   },
   waterButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#667eea',
     borderRadius: 25,
     width: 40,
     height: 40,
@@ -685,7 +835,7 @@ const styles = StyleSheet.create({
   waterCount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     minWidth: 50,
     textAlign: 'center',
   },
@@ -693,13 +843,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingHorizontal: 20,
-    gap: 10,
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#4CAF50',
     borderRadius: 10,
+    marginHorizontal: 5,
+  },
+  actionButtonGradient: {
     paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
   },
   actionButtonText: {
@@ -712,14 +864,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   searchInput: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
     borderRadius: 10,
     paddingHorizontal: 15,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#333',
+    color: '#fff',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   noResultsContainer: {
     paddingVertical: 40,
@@ -727,57 +880,57 @@ const styles = StyleSheet.create({
   },
   noResultsText: {
     fontSize: 14,
-    color: '#999',
+    color: 'rgba(255,255,255,0.6)',
   },
   loggedMealsContainer: {
     padding: 20,
-    backgroundColor: '#e8f5e9',
+    backgroundColor: 'rgba(167,139,250,0.1)',
     marginHorizontal: 20,
     marginBottom: 20,
     borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.2)',
   },
   loggedMealsTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#2e7d32',
+    color: '#fff',
     marginBottom: 5,
   },
   loggedCaloriesText: {
     fontSize: 12,
-    color: '#558b2f',
+    color: 'rgba(255,255,255,0.8)',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
     borderRadius: 20,
     padding: 20,
     width: '85%',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 15,
   },
   modalInput: {
-    backgroundColor: '#f8faf8',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#333',
+    color: '#fff',
     marginBottom: 12,
   },
   goalInputContainer: {
@@ -786,13 +939,12 @@ const styles = StyleSheet.create({
   goalLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
     marginBottom: 5,
   },
   modalButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 10,
     marginTop: 20,
   },
   modalButton: {
@@ -800,14 +952,23 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 5,
+  },
+  modalButtonGradient: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
   },
   modalButtonPrimary: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
   },
   modalButtonText: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '600',
+    color: '#fff',
   },
 });

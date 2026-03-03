@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '../../services/auth';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 interface WorkoutStats {
   totalWorkouts: number;
@@ -132,108 +136,169 @@ const ProgressScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2E7D32" />
-          <Text style={styles.loadingText}>Loading progress...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.loadingContainer}>
+            <LinearGradient
+              colors={['#667eea', '#764ba2', '#f093fb']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.loadingGradient}
+            >
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.loadingText}>Loading progress...</Text>
+            </LinearGradient>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Stats</Text>
-          <View style={styles.statsGrid}>
-            <StatCard
-              title="Total Workouts"
-              value={stats.totalWorkouts}
-              subtitle="All time"
-              icon="🏋️"
-            />
-            <StatCard
-              title="Calories Burned"
-              value={stats.totalCalories.toLocaleString()}
-              subtitle="Total calories"
-              icon="🔥"
-            />
-            <StatCard
-              title="Current Streak"
-              value={`${stats.currentStreak} days`}
-              subtitle="Keep going!"
-              icon="⚡"
-            />
-            <StatCard
-              title="This Week"
-              value={stats.weeklyWorkouts}
-              subtitle="Workouts"
-              icon="📅"
-            />
-          </View>
-        </View>
+    <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <LinearGradient
+          colors={['#667eea', '#764ba2', '#f093fb']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <Text style={styles.headerTitle}>Progress 📊</Text>
+          <Text style={styles.headerSubtitle}>Track your fitness journey</Text>
+        </LinearGradient>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Workouts</Text>
-            <TouchableOpacity style={styles.seeAllButton}>
-              <Text style={styles.seeAllText}>See All</Text>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Your Stats</Text>
+            <View style={styles.statsGrid}>
+              <StatCard
+                title="Total Workouts"
+                value={stats.totalWorkouts}
+                subtitle="All time"
+                icon="🏋️"
+              />
+              <StatCard
+                title="Calories Burned"
+                value={stats.totalCalories.toLocaleString()}
+                subtitle="Total calories"
+                icon="🔥"
+              />
+              <StatCard
+                title="Current Streak"
+                value={`${stats.currentStreak} days`}
+                subtitle="Keep going!"
+                icon="⚡"
+              />
+              <StatCard
+                title="This Week"
+                value={stats.weeklyWorkouts}
+                subtitle="Workouts"
+                icon="📅"
+              />
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Workouts</Text>
+              <TouchableOpacity style={styles.seeAllButton}>
+                <LinearGradient
+                  colors={['#667eea', '#764ba2']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.seeAllGradient}
+                >
+                  <Text style={styles.seeAllText}>See All</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.workoutList}>
+              {recentWorkouts.map((workout) => (
+                <WorkoutItem key={workout.id} workout={workout} />
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Monthly Overview</Text>
+            <View style={styles.monthlyStats}>
+              <View style={styles.monthlyStatItem}>
+                <Text style={styles.monthlyStatValue}>{stats.monthlyWorkouts}</Text>
+                <Text style={styles.monthlyStatLabel}>Workouts this month</Text>
+              </View>
+              <View style={styles.monthlyStatItem}>
+                <Text style={styles.monthlyStatValue}>
+                  {Math.round(stats.monthlyWorkouts * 4.2 * 30)}
+                </Text>
+                <Text style={styles.monthlyStatLabel}>Calories this month</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <TouchableOpacity 
+              style={styles.startWorkoutButton}
+              onPress={() => router.push('/StartWorkout' as any)}
+            >
+              <LinearGradient
+                colors={['#667eea', '#764ba2']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.startWorkoutGradient}
+              >
+                <Text style={styles.startWorkoutButtonText}>Start New Workout</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
-          <View style={styles.workoutList}>
-            {recentWorkouts.map((workout) => (
-              <WorkoutItem key={workout.id} workout={workout} />
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Monthly Overview</Text>
-          <View style={styles.monthlyStats}>
-            <View style={styles.monthlyStatItem}>
-              <Text style={styles.monthlyStatValue}>{stats.monthlyWorkouts}</Text>
-              <Text style={styles.monthlyStatLabel}>Workouts this month</Text>
-            </View>
-            <View style={styles.monthlyStatItem}>
-              <Text style={styles.monthlyStatValue}>
-                {Math.round(stats.monthlyWorkouts * 4.2 * 30)}
-              </Text>
-              <Text style={styles.monthlyStatLabel}>Calories this month</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <TouchableOpacity 
-            style={styles.startWorkoutButton}
-            onPress={() => router.push('/start-workout')}
-          >
-            <Text style={styles.startWorkoutButtonText}>Start New Workout</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
-    backgroundColor: '#f8faf8',
+  },
+  header: {
+    padding: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 5,
+    textShadowColor: '#764ba2',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#e0e7ff',
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 10,
-    color: '#666',
-    fontSize: 16,
+  loadingGradient: {
+    padding: 30,
+    borderRadius: 20,
+    alignItems: 'center',
   },
-  scrollView: {
-    flex: 1,
+  loadingText: {
+    marginTop: 15,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   section: {
     padding: 20,
@@ -247,14 +312,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 15,
+    letterSpacing: 0.5,
   },
   seeAllButton: {
+    borderRadius: 12,
+  },
+  seeAllGradient: {
     paddingHorizontal: 15,
     paddingVertical: 5,
-    backgroundColor: '#2E7D32',
-    borderRadius: 15,
+    borderRadius: 12,
+    alignItems: 'center',
   },
   seeAllText: {
     color: '#fff',
@@ -268,16 +337,19 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '48%',
-    backgroundColor: '#fff',
-    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 18,
     padding: 20,
     alignItems: 'center',
     marginBottom: 15,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
   statIcon: {
     fontSize: 24,
@@ -286,29 +358,27 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#fff',
     marginBottom: 5,
   },
   statTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     textAlign: 'center',
     marginBottom: 3,
   },
   statSubtitle: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
   },
   workoutList: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   workoutItem: {
     flexDirection: 'row',
@@ -316,7 +386,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   workoutInfo: {
     flex: 1,
@@ -324,12 +394,12 @@ const styles = StyleSheet.create({
   workoutType: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 3,
   },
   workoutDate: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
   },
   workoutStats: {
     alignItems: 'flex-end',
@@ -337,22 +407,20 @@ const styles = StyleSheet.create({
   workoutDuration: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#fff',
     marginBottom: 3,
   },
   workoutCalories: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
   },
   monthlyStats: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 18,
     padding: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   monthlyStatItem: {
     alignItems: 'center',
@@ -361,24 +429,26 @@ const styles = StyleSheet.create({
   monthlyStatValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#fff',
     marginBottom: 5,
   },
   monthlyStatLabel: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
   },
   startWorkoutButton: {
-    backgroundColor: '#2E7D32',
+    borderRadius: 15,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  startWorkoutGradient: {
     padding: 18,
     borderRadius: 15,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   startWorkoutButtonText: {
     color: '#fff',

@@ -1,17 +1,36 @@
 import { Stack } from "expo-router";
-import { OnboardingProvider } from '../context/OnboardingContext';
+import { OnboardingProvider } from './screens/OnboardingContext';
+import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function RootLayout() {
   return (
     <OnboardingProvider>
+      <StatusBar 
+        style="light" 
+        backgroundColor="#0a0f1c" 
+        translucent={false}
+      />
       <Stack
         screenOptions={{
           headerStyle: {
-            // backgroundColor: '#1399a3ff',
+            backgroundColor: 'transparent',
           },
-          // headerTintColor: '#fff',
+          headerBackground: () => (
+            <LinearGradient
+              colors={['#667eea', '#764ba2', '#f093fb']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ flex: 1 }}
+            />
+          ),
+          headerTintColor: '#fff',
           headerTitleStyle: {
-          fontWeight: 'bold',
+            fontWeight: 'bold',
+            fontSize: 18,
+          },
+          contentStyle: {
+            backgroundColor: '#0a0f1c',
           },
         }}
       />

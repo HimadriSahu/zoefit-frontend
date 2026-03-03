@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useOnboarding, Gender, NutrioGoal } from '../../context/OnboardingContext';
+import { useOnboarding, Gender, NutrioGoal } from './OnboardingContext';
 import * as ImagePicker from 'expo-image-picker';
 
 const PersonalInfoScreen = () => {
