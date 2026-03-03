@@ -36,11 +36,15 @@
 import { Redirect } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/auth';
+
+const ONBOARDING_COMPLETED_KEY = 'nutrio_onboarding_completed';
 
 export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
   useEffect(() => {
     checkAuthStatus();
@@ -50,15 +54,22 @@ export default function Index() {
     try {
       const authenticated = await authService.isAuthenticated();
       setIsAuthenticated(authenticated);
+      if (authenticated) {
+        const completed = await AsyncStorage.getItem(ONBOARDING_COMPLETED_KEY);
+        setOnboardingCompleted(completed === 'true');
+      } else {
+        setOnboardingCompleted(null);
+      }
     } catch (error) {
       console.error('Auth check failed:', error);
       setIsAuthenticated(false);
+      setOnboardingCompleted(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && onboardingCompleted === null)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8faf8' }}>
         <ActivityIndicator size="large" color="#2E7D32" />
@@ -68,7 +79,11 @@ export default function Index() {
   }
 
   if (isAuthenticated) {
-    return <Redirect href="/Zoefit/home" />;
+    // Place onboarding before home: go to onboarding first unless already completed
+    if (!onboardingCompleted) {
+      return <Redirect href={"/onboarding" as import('expo-router').Href} />;
+    }
+    return <Redirect href="/Zoefit/welcomePage" />;
   }
 
   return <Redirect href="/LoginScreen" />;

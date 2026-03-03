@@ -1,18 +1,37 @@
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { authService } from '../services/auth';
 
 const LoginScreen = () => {
+  // Normalize different error shapes coming from ApiService
+  const getPayloadFromError = (err: any) => {
+    if (!err) return {};
+    if (err.body) return err.body;
+    // If message is JSON (we sometimes stringify server body into message), try parsing it
+    if (typeof err.message === 'string') {
+      const text = err.message.trim();
+      if ((text.startsWith('{') || text.startsWith('['))) {
+        try {
+          return JSON.parse(text);
+        } catch (_) {
+          // fallthrough
+        }
+      }
+    }
+    // If it's already an object-like structure
+    if (typeof err === 'object') return err;
+    return { detail: String(err) };
+  };
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -76,7 +95,7 @@ const LoginScreen = () => {
     setLoading(true);
     
     try {
-      const response = await authService.login(email.trim(), password);
+      const _response = await authService.login(email.trim(), password);
       
       Alert.alert(
         '🎉 Welcome to ZoeFit!',
@@ -85,32 +104,37 @@ const LoginScreen = () => {
           {
             text: 'Let\'s Go!',
             onPress: () => {
-              // Navigate to main app or dashboard
-              router.replace('/Zoefit/home');
+              // Onboarding pages run before home
+              router.replace('/onboarding' as import('expo-router').Href);
             },
           },
         ]
       );
     } catch (error: any) {
       console.error('Login error:', error);
-      
+
+      const payload = getPayloadFromError(error);
       let errorMessage = 'Login failed. Please try again.';
-      
-      // Handle specific error scenarios
-      if (error.detail) {
-        if (error.detail.includes('No active account found') || error.detail.includes('Invalid credentials')) {
+
+      // Handle specific error scenarios from structured payload
+      if (payload?.non_field_errors) {
+        errorMessage = Array.isArray(payload.non_field_errors) ? payload.non_field_errors[0] : String(payload.non_field_errors);
+        if (errorMessage.includes('Unable to log in')) {
+          errorMessage = 'Unable to log in with provided credentials. Please check your email and password.';
+        }
+      } else if (payload?.detail) {
+        const d = String(payload.detail);
+        if (d.includes('No active account') || d.includes('Invalid credentials')) {
           errorMessage = 'Account not found. Please check your email or sign up for a new account.';
-        } else if (error.detail.includes('Email is not verified')) {
+        } else if (d.includes('Email is not verified')) {
           errorMessage = 'Please verify your email address before logging in.';
         } else {
-          errorMessage = error.detail;
+          errorMessage = d;
         }
-      } else if (error.error) {
-        errorMessage = error.error;
-      } else if (error.non_field_errors) {
-        errorMessage = error.non_field_errors[0];
-      } else if (error.email) {
-        errorMessage = error.email[0];
+      } else if (payload?.email) {
+        errorMessage = Array.isArray(payload.email) ? payload.email[0] : String(payload.email);
+      } else if (payload?.error) {
+        errorMessage = String(payload.error);
       }
       
       Alert.alert(
@@ -175,7 +199,7 @@ const LoginScreen = () => {
         </TouchableOpacity>
 
         <Text style={styles.footerText}>
-          Don't have an account?{' '}
+          {"Don't have an account? "}
           <Text 
             style={styles.linkText} 
             onPress={() => router.push('/SignupScreen')}

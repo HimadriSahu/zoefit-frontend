@@ -1,21 +1,60 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const HomeScreen = () => {
   const router = useRouter();
+  const [aiScale] = useState(new Animated.Value(1));
+  const [isAiActive, setIsAiActive] = useState(false);
+
+  const handleAiPress = () => {
+    // Animate the AI button
+    Animated.sequence([
+      Animated.timing(aiScale, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(aiScale, {
+        toValue: 1.1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(aiScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Toggle AI active state (simulated functionality)
+    setIsAiActive(!isAiActive);
+    
+    // Simulate AI interaction without actual AI features
+    setTimeout(() => {
+      setIsAiActive(false);
+    }, 2000);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Welcome Back! 💪</Text>
+          <View style={styles.headerTop}>
+            <Text style={styles.greeting}>Welcome Back! 💪</Text>
+            <Animated.View style={[styles.aiButton, { transform: [{ scale: aiScale }] }]}>
+              <TouchableOpacity onPress={handleAiPress} style={styles.aiTouchable}>
+                <Text style={styles.aiIcon}>🤖</Text>
+                {isAiActive && <Text style={styles.aiStatus}>Active</Text>}
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
           <Text style={styles.subtitle}>Ready to crush your fitness goals today?</Text>
         </View>
 
         <View style={styles.statsContainer}>
-          <Text style={styles.statsTitle}>Today's Overview</Text>
+          <Text style={styles.statsTitle}>{"Today's Overview"}</Text>
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>0</Text>
@@ -67,7 +106,7 @@ const HomeScreen = () => {
         </View>
 
         <View style={styles.motivationSection}>
-          <Text style={styles.motivationQuote}>"The only bad workout is the one that didn't happen"</Text>
+          <Text style={styles.motivationQuote}>{"The only bad workout is the one that didn't happen"}</Text>
           <Text style={styles.motivationAuthor}>- Unknown</Text>
         </View>
       </ScrollView>
@@ -100,6 +139,38 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#e8f5e9',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  aiButton: {
+    backgroundColor: '#2E7D32',
+    borderRadius: 25,
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  aiTouchable: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiIcon: {
+    fontSize: 24,
+    color: '#fff',
+  },
+  aiStatus: {
+    fontSize: 10,
+    color: '#FFD43B',
+    fontWeight: 'bold',
+    marginTop: 2,
   },
   statsContainer: {
     padding: 20,

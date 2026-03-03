@@ -1,18 +1,35 @@
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { authService } from '../services/auth';
 
 const SignupScreen = () => {
+  // Normalize different error shapes coming from ApiService
+  const getPayloadFromError = (err: any) => {
+    if (!err) return {};
+    if (err.body) return err.body;
+    if (typeof err.message === 'string') {
+      const text = err.message.trim();
+      if ((text.startsWith('{') || text.startsWith('['))) {
+        try {
+          return JSON.parse(text);
+        } catch (_) {
+          // fallthrough
+        }
+      }
+    }
+    if (typeof err === 'object') return err;
+    return { detail: String(err) };
+  };
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,45 +57,50 @@ const SignupScreen = () => {
     setLoading(true);
     
     try {
-      const response = await authService.register(username.trim(), email.trim(), password);
+      const _response = await authService.register(username.trim(), email.trim(), password);
       
       Alert.alert(
         '🎉 Account Created!',
-        'Welcome to ZoeFit! Your fitness journey starts now. You\'re all set up and ready to go!',
+        'Welcome to ZoeFit! Your fitness journey starts now. Complete a few quick questions to personalize Nutrio, then you\'re ready to go!',
         [
           {
-            text: 'Start Working Out 💪',
+            text: 'Continue',
             onPress: () => {
-              // Navigate to main app or dashboard
-              router.replace('/(tabs)/home');
+              // Onboarding pages run before home
+              router.replace('/onboarding' as import('expo-router').Href);
             },
           },
         ]
       );
     } catch (error: any) {
       console.error('Signup error:', error);
-      
+
+      let payload = getPayloadFromError(error);
       let errorMessage = 'Registration failed. Please try again.';
-      
-      // Handle specific error scenarios
-      if (error.email) {
-        if (error.email[0].includes('already exists')) {
+
+      // Handle specific error scenarios using structured body first
+      if (payload?.email) {
+        const msg = Array.isArray(payload.email) ? payload.email[0] : String(payload.email);
+        if (msg.includes('already exists')) {
           errorMessage = 'An account with this email already exists. Try logging in instead!';
         } else {
-          errorMessage = error.email[0];
+          errorMessage = msg;
         }
-      } else if (error.username) {
-        if (error.username[0].includes('already exists')) {
+      } else if (payload?.username) {
+        const msg = Array.isArray(payload.username) ? payload.username[0] : String(payload.username);
+        if (msg.includes('already exists')) {
           errorMessage = 'This username is already taken. Please choose another one.';
         } else {
-          errorMessage = error.username[0];
+          errorMessage = msg;
         }
-      } else if (error.password) {
-        errorMessage = error.password[0];
-      } else if (error.detail) {
-        errorMessage = error.detail;
-      } else if (error.error) {
-        errorMessage = error.error;
+      } else if (payload?.password) {
+        errorMessage = Array.isArray(payload.password) ? payload.password[0] : String(payload.password);
+      } else if (payload?.non_field_errors) {
+        errorMessage = Array.isArray(payload.non_field_errors) ? payload.non_field_errors[0] : String(payload.non_field_errors);
+      } else if (payload?.detail) {
+        errorMessage = String(payload.detail);
+      } else if (payload?.error) {
+        errorMessage = String(payload.error);
       }
       
       Alert.alert(

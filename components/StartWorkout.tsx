@@ -1,557 +1,448 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useRef } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  Modal,
-  Animated,
-  Dimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+	View,
+	Text,
+	StyleSheet,
+	ScrollView,
+	Dimensions,
+	TouchableOpacity,
+	Animated,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { AnimatedCircularProgress } from "react-native-circular-progress";
+import { LineChart } from "react-native-chart-kit";
 
-const { width, height } = Dimensions.get('window');
+const screenWidth = Dimensions.get("window").width;
 
-interface WorkoutType {
-  id: string;
-  name: string;
-  icon: string;
-  duration: number;
-  calories: number;
-  description: string;
+export default function StartWorkout() {
+	return (
+		<View style={{ flex: 1, backgroundColor: '#eafcf7' }}>
+			<ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+				{/* HEADER */}
+				<LinearGradient colors={["#43e97b", "#38f9d7"]} style={styles.header}>
+					<Text style={styles.logo}>Zoefit</Text>
+					<View style={styles.welcomeCardGlass}>
+						<Text style={styles.welcome}>Welcome Back 👋</Text>
+						<Text style={styles.sub}>Ready to crush your fitness goals today?</Text>
+					</View>
+				</LinearGradient>
+
+				{/* OVERVIEW RINGS */}
+				<Text style={styles.sectionTitle}>Today’s Overview</Text>
+				<View style={styles.ringRow}>
+					<Ring label="Calories" value="650" fill={70} color="#00e0ff" />
+					<Ring label="Steps" value="4,000" fill={50} color="#43e97b" />
+					<Ring label="Minutes" value="30" fill={30} color="#ff9a9e" />
+				</View>
+
+				{/* AI COACH */}
+				<View style={styles.aiCardGlass}>
+					<Text style={styles.aiTitle}>🤖 Smart Fitness Coach</Text>
+					<Text style={styles.aiText}>Based on your progress, try a 20-min HIIT workout today.</Text>
+				</View>
+
+				{/* QUICK ACTIONS */}
+				<Text style={styles.sectionTitle}>Quick Actions</Text>
+				<View style={styles.grid}>
+					<ActionCard icon="🏋️" title="Workout" />
+					<ActionCard icon="🥗" title="Nutrition" />
+					<ActionCard icon="😴" title="Sleep" />
+					<ActionCard icon="💧" title="Water" />
+				</View>
+
+				{/* BADGES */}
+				<Text style={styles.sectionTitle}>Your Progress</Text>
+				<View style={styles.badgeRow}>
+					<View style={styles.badgeGlass}>
+						<Text>🔥 7 Day Streak</Text>
+					</View>
+					<View style={styles.badgeGlass}>
+						<Text>👟 10,000 Steps</Text>
+					</View>
+				</View>
+
+				{/* WEEKLY CHART */}
+				<Text style={styles.sectionTitle}>Weekly Activity</Text>
+				<View style={styles.chartGlassWrap}>
+					<LineChart
+						data={{
+							labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+							datasets: [{ data: [2000, 4500, 3000, 6000, 5000, 7000, 9000] }],
+						}}
+						width={screenWidth - 30}
+						height={200}
+						chartConfig={{
+							backgroundGradientFrom: "#43e97b",
+							backgroundGradientTo: "#38f9d7",
+							decimalPlaces: 0,
+							color: () => "#fff",
+							labelColor: () => "#fff",
+						}}
+						style={{ borderRadius: 20 }}
+					/>
+				</View>
+
+				{/* QUOTE */}
+				<LinearGradient colors={["#11998e", "#38ef7d"]} style={styles.quoteCardGlass}>
+					<Text style={styles.quote}>“The only bad workout is the one that didn’t happen”</Text>
+					<Text style={styles.quoteAuthor}>– Unknown</Text>
+				</LinearGradient>
+			</ScrollView>
+			{/* Floating Action Button */}
+			<TouchableOpacity style={styles.fab} activeOpacity={0.8} onPress={() => {}}>
+				<LinearGradient colors={["#43e97b", "#38f9d7"]} style={styles.fabGradient}>
+					<Text style={styles.fabIcon}>＋</Text>
+				</LinearGradient>
+			</TouchableOpacity>
+			{/* Bottom Navigation */}
+			<BottomNav />
+		</View>
+	);
 }
 
-const workoutTypes: WorkoutType[] = [
-  {
-    id: 'cardio',
-    name: 'Cardio',
-    icon: '🏃‍♂️',
-    duration: 30,
-    calories: 300,
-    description: 'Running, cycling, or elliptical training'
-  },
-  {
-    id: 'strength',
-    name: 'Strength',
-    icon: '🏋️‍♂️',
-    duration: 45,
-    calories: 250,
-    description: 'Weight training and resistance exercises'
-  },
-  {
-    id: 'yoga',
-    name: 'Yoga',
-    icon: '🧘‍♂️',
-    duration: 60,
-    calories: 180,
-    description: 'Flexibility, balance, and mindfulness'
-  },
-  {
-    id: 'hiit',
-    name: 'HIIT',
-    icon: '⚡',
-    duration: 20,
-    calories: 400,
-    description: 'High-intensity interval training'
-  },
-  {
-    id: 'swimming',
-    name: 'Swimming',
-    icon: '🏊‍♂️',
-    duration: 40,
-    calories: 350,
-    description: 'Full-body aquatic workout'
-  },
-  {
-    id: 'cycling',
-    name: 'Cycling',
-    icon: '🚴‍♂️',
-    duration: 45,
-    calories: 320,
-    description: 'Indoor or outdoor cycling'
-  },
-];
 
-const StartWorkout: React.FC = () => {
-  const router = useRouter();
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutType | null>(null);
-  const [customDuration, setCustomDuration] = useState<number>(30);
-  const [isWorkoutActive, setIsWorkoutActive] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [showDurationModal, setShowDurationModal] = useState(false);
-  const [fadeAnim] = useState(new Animated.Value(0));
 
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (isWorkoutActive && selectedWorkout) {
-      interval = setInterval(() => {
-        setElapsedTime(prev => {
-          if (prev >= selectedWorkout.duration * 60) {
-            handleWorkoutComplete();
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isWorkoutActive, selectedWorkout]);
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  const handleWorkoutComplete = () => {
-    setIsWorkoutActive(false);
-    Alert.alert(
-      'Workout Complete! 🎉',
-      `Great job! You burned ${selectedWorkout?.calories || 0} calories in ${formatTime(elapsedTime)}.`,
-      [
-        { text: 'View Summary', onPress: () => router.push('/(tabs)/home') },
-        { text: 'Start Another', onPress: resetWorkout },
-      ]
-    );
-  };
-
-  const resetWorkout = () => {
-    setSelectedWorkout(null);
-    setElapsedTime(0);
-    setIsWorkoutActive(false);
-  };
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const startWorkout = () => {
-    if (!selectedWorkout) {
-      Alert.alert('Select Workout', 'Please select a workout type first.');
-      return;
-    }
-    setIsWorkoutActive(true);
-  };
-
-  const pauseWorkout = () => {
-    setIsWorkoutActive(false);
-  };
-
-  const resumeWorkout = () => {
-    setIsWorkoutActive(true);
-  };
-
-  const stopWorkout = () => {
-    Alert.alert(
-      'Stop Workout?',
-      'Are you sure you want to stop your current workout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Stop', onPress: resetWorkout, style: 'destructive' },
-      ]
-    );
-  };
-
-  const renderWorkoutSelection = () => (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <SafeAreaView style={styles.safeArea}>
-        {/* <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Start Workout</Text>
-        </View> */}
-
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Choose Your Workout</Text>
-            <View style={styles.workoutGrid}>
-              {workoutTypes.map((workout) => (
-                <TouchableOpacity
-                  key={workout.id}
-                  style={[
-                    styles.workoutCard,
-                    selectedWorkout?.id === workout.id && styles.selectedWorkoutCard,
-                  ]}
-                  onPress={() => setSelectedWorkout(workout)}
-                >
-                  <Text style={styles.workoutIcon}>{workout.icon}</Text>
-                  <Text style={styles.workoutName}>{workout.name}</Text>
-                  <Text style={styles.workoutDuration}>{workout.duration} min</Text>
-                  <Text style={styles.workoutCalories}>{workout.calories} cal</Text>
-                  <Text style={styles.workoutDescription}>{workout.description}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {selectedWorkout && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Customize Duration</Text>
-              <View style={styles.durationContainer}>
-                <Text style={styles.durationLabel}>Duration: {customDuration} minutes</Text>
-                <View style={styles.durationButtons}>
-                  <TouchableOpacity
-                    style={styles.durationButton}
-                    onPress={() => setCustomDuration(Math.max(5, customDuration - 5))}
-                  >
-                    <Text style={styles.durationButtonText}>-5</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.durationButton}
-                    onPress={() => setCustomDuration(Math.min(120, customDuration + 5))}
-                  >
-                    <Text style={styles.durationButtonText}>+5</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {selectedWorkout && (
-            <View style={styles.section}>
-              <TouchableOpacity style={styles.startButton} onPress={startWorkout}>
-                <Text style={styles.startButtonText}>Start {selectedWorkout.name} Workout</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </ScrollView>
-      </SafeAreaView>
-    </Animated.View>
-  );
-
-  const renderActiveWorkout = () => (
-    <View style={styles.activeWorkoutContainer}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.workoutHeader}>
-          <Text style={styles.workoutTitle}>{selectedWorkout?.icon} {selectedWorkout?.name}</Text>
-          <TouchableOpacity onPress={stopWorkout} style={styles.stopButton}>
-            <Text style={styles.stopButtonText}>Stop</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.timerContainer}>
-          <Text style={styles.timerLabel}>Time Remaining</Text>
-          <Text style={styles.timerText}>
-            {formatTime((selectedWorkout?.duration || 30) * 60 - elapsedTime)}
-          </Text>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${(elapsedTime / ((selectedWorkout?.duration || 30) * 60)) * 100}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {Math.round((elapsedTime / ((selectedWorkout?.duration || 30) * 60)) * 100)}%
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{selectedWorkout?.calories}</Text>
-            <Text style={styles.statLabel}>Est. Calories</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{formatTime(elapsedTime)}</Text>
-            <Text style={styles.statLabel}>Elapsed</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{selectedWorkout?.duration}</Text>
-            <Text style={styles.statLabel}>Total Min</Text>
-          </View>
-        </View>
-
-        <View style={styles.controlsContainer}>
-          <TouchableOpacity
-            style={[styles.controlButton, isWorkoutActive ? styles.pauseButton : styles.resumeButton]}
-            onPress={isWorkoutActive ? pauseWorkout : resumeWorkout}
-          >
-            <Text style={styles.controlButtonText}>
-              {isWorkoutActive ? 'Pause' : 'Resume'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.motivationContainer}>
-          <Text style={styles.motivationText}>Keep pushing! 💪</Text>
-          <Text style={styles.motivationSubtext}>You're doing great!</Text>
-        </View>
-      </SafeAreaView>
-    </View>
-  );
-
-  return selectedWorkout && elapsedTime > 0 ? renderActiveWorkout() : renderWorkoutSelection();
+// ----------------
+// Components
+// ----------------
+type RingProps = {
+	label: string;
+	value: string | number;
+	fill: number;
+	color: string;
 };
 
+const Ring = ({ label, value, fill, color }: RingProps) => (
+	<View style={styles.ring}>
+		<AnimatedCircularProgress size={100} width={10} fill={fill} tintColor={color} backgroundColor="#eee">
+			{() => <Text style={styles.ringText}>{value}</Text>}
+		</AnimatedCircularProgress>
+		<Text style={styles.ringLabel}>{label}</Text>
+	</View>
+);
+
+type ActionCardProps = {
+	icon: string;
+	title: string;
+};
+
+const ActionCard = ({ icon, title }: ActionCardProps) => {
+	const scale = useRef(new Animated.Value(1)).current;
+	const onPressIn = () => {
+		Animated.spring(scale, { toValue: 0.96, useNativeDriver: false }).start();
+	};
+	const onPressOut = () => {
+		Animated.spring(scale, { toValue: 1, useNativeDriver: false }).start();
+	};
+	return (
+		<Animated.View style={[styles.actionCard, { transform: [{ scale }] }]}> 
+			<TouchableOpacity
+				activeOpacity={0.8}
+				onPressIn={onPressIn}
+				onPressOut={onPressOut}
+				style={{ alignItems: 'center', width: '100%' }}
+			>
+				<Text style={styles.actionIcon}>{icon}</Text>
+				<Text style={styles.actionText}>{title}</Text>
+			</TouchableOpacity>
+		</Animated.View>
+	);
+};
+
+// ----------------
+// Bottom Navigation (2026 style placeholder)
+// ----------------
+const BottomNav = () => (
+	<View style={styles.bottomNav}>
+		<TouchableOpacity style={styles.navItem}>
+			<Text style={styles.navIcon}>🏠</Text>
+			<Text style={styles.navLabel}>Home</Text>
+		</TouchableOpacity>
+		<TouchableOpacity style={styles.navItem}>
+			<Text style={styles.navIcon}>💪</Text>
+			<Text style={styles.navLabel}>Workout</Text>
+		</TouchableOpacity>
+		<TouchableOpacity style={styles.navItem}>
+			<Text style={styles.navIcon}>🍽️</Text>
+			<Text style={styles.navLabel}>Nutrition</Text>
+		</TouchableOpacity>
+		<TouchableOpacity style={styles.navItem}>
+			<Text style={styles.navIcon}>👤</Text>
+			<Text style={styles.navLabel}>Profile</Text>
+		</TouchableOpacity>
+	</View>
+);
+
+// ----------------
+// Styles
+// ----------------
+const shimmerAnim = new Animated.Value(0);
+Animated.loop(
+	Animated.timing(shimmerAnim, {
+		toValue: 1,
+		duration: 2200,
+		useNativeDriver: false,
+	})
+).start();
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8faf8',
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 5,
-    backgroundColor: '#2E7D32',
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#fff',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  section: {
-    padding: 20,
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-  },
-  workoutGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  workoutCard: {
-    width: '48%',
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 15,
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  selectedWorkoutCard: {
-    backgroundColor: '#e8f5e9',
-    borderWidth: 2,
-    borderColor: '#2E7D32',
-  },
-  workoutIcon: {
-    fontSize: 32,
-    marginBottom: 10,
-  },
-  workoutName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  workoutDuration: {
-    fontSize: 14,
-    color: '#2E7D32',
-    fontWeight: '600',
-    marginBottom: 3,
-  },
-  workoutCalories: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
-  workoutDescription: {
-    fontSize: 11,
-    color: '#666',
-    textAlign: 'center',
-  },
-  durationContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  durationLabel: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  durationButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  durationButton: {
-    backgroundColor: '#2E7D32',
-    borderRadius: 25,
-    width: 60,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  durationButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  startButton: {
-    backgroundColor: '#2E7D32',
-    borderRadius: 15,
-    padding: 20,
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  startButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  activeWorkoutContainer: {
-    flex: 1,
-    backgroundColor: '#2E7D32',
-  },
-  workoutHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-  },
-  workoutTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  stopButton: {
-    backgroundColor: '#d32f2f',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  stopButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  timerContainer: {
-    alignItems: 'center',
-    padding: 30,
-  },
-  timerLabel: {
-    fontSize: 16,
-    color: '#e8f5e9',
-    marginBottom: 10,
-  },
-  timerText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  progressContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  progressBar: {
-    width: width * 0.8,
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 4,
-  },
-  progressText: {
-    color: '#fff',
-    fontSize: 14,
-    marginTop: 8,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 20,
-  },
-  statCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 15,
-    padding: 20,
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#e8f5e9',
-  },
-  controlsContainer: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  controlButton: {
-    borderRadius: 30,
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-    minWidth: 150,
-    alignItems: 'center',
-  },
-  pauseButton: {
-    backgroundColor: '#ff9800',
-  },
-  resumeButton: {
-    backgroundColor: '#4caf50',
-  },
-  controlButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  motivationContainer: {
-    alignItems: 'center',
-    padding: 30,
-  },
-  motivationText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
-  },
-  motivationSubtext: {
-    fontSize: 16,
-    color: '#e8f5e9',
-  },
+	container: {
+		flex: 1,
+		backgroundColor: "#eafcf7",
+	},
+	header: {
+		padding: 20,
+		borderBottomLeftRadius: 30,
+		borderBottomRightRadius: 30,
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 8 },
+		shadowOpacity: 0.2,
+		shadowRadius: 16,
+		elevation: 10,
+		overflow: 'hidden',
+	},
+	shimmer: {
+		...StyleSheet.absoluteFillObject,
+		opacity: 0.18,
+		backgroundColor: 'rgba(255,255,255,0.5)',
+	},
+	logo: {
+		color: "#fff",
+		fontSize: 28,
+		fontWeight: "bold",
+		letterSpacing: 2,
+		textShadowColor: '#38f9d7',
+		textShadowOffset: { width: 0, height: 2 },
+		textShadowRadius: 8,
+	},
+	welcomeCardGlass: {
+		marginTop: 15,
+		backgroundColor: 'rgba(255,255,255,0.18)',
+		borderRadius: 20,
+		padding: 18,
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.12,
+		shadowRadius: 12,
+	},
+	welcome: {
+		fontSize: 26,
+		color: "#fff",
+		fontWeight: "bold",
+		letterSpacing: 1,
+	},
+	sub: {
+		color: "#eafff5",
+		marginTop: 5,
+		fontSize: 15,
+		fontWeight: '500',
+	},
+	sectionTitle: {
+		fontSize: 20,
+		fontWeight: "bold",
+		margin: 15,
+		color: '#2e7d32',
+		letterSpacing: 0.5,
+	},
+	ringRow: {
+		flexDirection: "row",
+		justifyContent: "space-around",
+		marginBottom: 10,
+	},
+	ring: {
+		alignItems: "center",
+		backgroundColor: 'rgba(255,255,255,0.18)',
+		borderRadius: 18,
+		padding: 10,
+		marginHorizontal: 4,
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.10,
+		shadowRadius: 8,
+		// Neumorphic effect
+		elevation: 8,
+		borderWidth: 1,
+		borderColor: 'rgba(67,233,123,0.08)',
+	},
+		bottomNav: {
+			flexDirection: 'row',
+			justifyContent: 'space-around',
+			alignItems: 'center',
+			backgroundColor: 'rgba(255,255,255,0.85)',
+			borderTopLeftRadius: 24,
+			borderTopRightRadius: 24,
+			paddingVertical: 10,
+			position: 'absolute',
+			left: 0,
+			right: 0,
+			bottom: 0,
+			shadowColor: '#43e97b',
+			shadowOffset: { width: 0, height: -2 },
+			shadowOpacity: 0.08,
+			shadowRadius: 8,
+			elevation: 12,
+			zIndex: 200,
+		},
+		navItem: {
+			alignItems: 'center',
+			flex: 1,
+		},
+		navIcon: {
+			fontSize: 24,
+			marginBottom: 2,
+		},
+		navLabel: {
+			fontSize: 12,
+			color: '#2e7d32',
+			fontWeight: '600',
+		},
+	ringText: {
+		fontWeight: "bold",
+		fontSize: 18,
+		color: '#00b894',
+		textShadowColor: '#eafff5',
+		textShadowOffset: { width: 0, height: 1 },
+		textShadowRadius: 4,
+	},
+	ringLabel: {
+		marginTop: 5,
+		color: "#555",
+		fontWeight: '600',
+		fontSize: 13,
+	},
+	aiCardGlass: {
+		backgroundColor: 'rgba(255,255,255,0.18)',
+		margin: 15,
+		padding: 18,
+		borderRadius: 20,
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.12,
+		shadowRadius: 12,
+		alignItems: 'center',
+	},
+	aiTitle: {
+		fontWeight: "bold",
+		marginBottom: 5,
+		fontSize: 18,
+		color: '#2e7d32',
+	},
+	aiText: {
+		color: "#555",
+		fontSize: 15,
+		fontWeight: '500',
+		textAlign: 'center',
+	},
+	grid: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		justifyContent: "space-around",
+		marginBottom: 10,
+	},
+	actionCard: {
+		width: "44%",
+		backgroundColor: 'rgba(255,255,255,0.18)',
+		padding: 20,
+		borderRadius: 18,
+		alignItems: "center",
+		marginVertical: 10,
+		elevation: 3,
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.10,
+		shadowRadius: 8,
+	},
+	actionIcon: {
+		fontSize: 32,
+		marginBottom: 6,
+	},
+	actionText: {
+		marginTop: 5,
+		fontWeight: "bold",
+		fontSize: 15,
+		color: '#2e7d32',
+	},
+	badgeRow: {
+		flexDirection: "row",
+		justifyContent: "space-around",
+		marginBottom: 10,
+	},
+	badgeGlass: {
+		backgroundColor: 'rgba(255,255,255,0.18)',
+		padding: 15,
+		borderRadius: 15,
+		elevation: 2,
+		minWidth: 120,
+		alignItems: 'center',
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.10,
+		shadowRadius: 8,
+	},
+	chartGlassWrap: {
+		backgroundColor: 'rgba(255,255,255,0.18)',
+		borderRadius: 20,
+		marginHorizontal: 15,
+		marginBottom: 20,
+		padding: 8,
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.10,
+		shadowRadius: 8,
+	},
+	quoteCardGlass: {
+		margin: 15,
+		padding: 20,
+		borderRadius: 20,
+		alignItems: "center",
+		backgroundColor: 'rgba(255,255,255,0.18)',
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.10,
+		shadowRadius: 8,
+	},
+	quote: {
+		color: "#fff",
+		fontStyle: "italic",
+		textAlign: "center",
+		fontSize: 16,
+		fontWeight: '600',
+		textShadowColor: '#38ef7d',
+		textShadowOffset: { width: 0, height: 1 },
+		textShadowRadius: 4,
+	},
+	quoteAuthor: {
+		color: "#eafff5",
+		marginTop: 5,
+		fontSize: 13,
+		fontWeight: '500',
+	},
+	fab: {
+		position: 'absolute',
+		bottom: 32,
+		right: 28,
+		zIndex: 100,
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.18,
+		shadowRadius: 12,
+		elevation: 8,
+	},
+	fabGradient: {
+		width: 64,
+		height: 64,
+		borderRadius: 32,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	fabIcon: {
+		color: '#fff',
+		fontSize: 36,
+		fontWeight: 'bold',
+		textShadowColor: '#38f9d7',
+		textShadowOffset: { width: 0, height: 2 },
+		textShadowRadius: 8,
+	},
 });
 
-export default StartWorkout;

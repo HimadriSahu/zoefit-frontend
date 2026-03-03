@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import React from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { authService } from '../../services/auth';
 
 const ProfileScreen = () => {
@@ -129,7 +129,17 @@ const ProfileScreen = () => {
         <View style={styles.menuContainer}>
           <Text style={styles.sectionTitle}>Account</Text>
           {menuItems.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.menuItem}>
+            <TouchableOpacity
+              key={item.id}
+              style={styles.menuItem}
+              onPress={() => {
+                if (item.screen === '/personal-info') {
+                  router.push('/Zoefit/personal-info');
+                } else {
+                  Alert.alert('Coming Soon', `${item.title} feature is coming soon!`);
+                }
+              }}
+            >
               <Text style={styles.menuIcon}>{item.icon}</Text>
               <Text style={styles.menuTitle}>{item.title}</Text>
               <Text style={styles.menuArrow}>›</Text>

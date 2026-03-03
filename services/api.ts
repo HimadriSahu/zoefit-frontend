@@ -26,10 +26,20 @@ export interface AuthResponse {
   };
 }
 
-export interface ApiError {
-  error?: string;
-  detail?: string;
-  [key: string]: any;
+export class ApiError extends Error {
+  status?: number;
+  body?: any;
+
+  constructor(message: string, status?: number, body?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+    // Maintain proper stack (required for some RN environments)
+    if (typeof (Error as any).captureStackTrace === 'function') {
+      (Error as any).captureStackTrace(this, ApiError);
+    }
+  }
 }
 
 class ApiService {
@@ -88,15 +98,24 @@ class ApiService {
     try {
       const response = await fetch(url, config);
       console.log('📡 API Response Status:', response.status);
-      
-      const data = await response.json();
+
+      let data: any;
+      const contentType = response.headers.get('content-type');
+      try {
+        const text = await response.text();
+        if (text && contentType?.includes('application/json')) {
+          data = JSON.parse(text);
+        } else {
+          data = text ? { detail: text.slice(0, 200) } : {};
+        }
+      } catch (_) {
+        data = { detail: 'Invalid response from server' };
+      }
       console.log('📊 API Response Data:', data);
 
       if (!response.ok) {
-        throw {
-          status: response.status,
-          ...data,
-        } as ApiError;
+        const msg = data?.detail || data?.error || JSON.stringify(data) || `HTTP ${response.status}`;
+        throw new ApiError(msg, response.status, data);
       }
 
       return data as T;
@@ -115,15 +134,20 @@ class ApiService {
             // Retry the request with the new URL
             const retryUrl = `${this.baseURL}/api/auth${endpoint}`;
             const response = await fetch(retryUrl, config);
-            const data = await response.json();
-            
-            if (!response.ok) {
-              throw {
-                status: response.status,
-                ...data,
-              } as ApiError;
+            const text = await response.text();
+            let data: any = {};
+            try {
+              if (text && response.headers.get('content-type')?.includes('application/json')) {
+                data = JSON.parse(text);
+              }
+            } catch (_) {
+              data = {};
             }
-            
+            if (!response.ok) {
+              const msg = data?.detail || data?.error || JSON.stringify(data) || `HTTP ${response.status}`;
+              throw new ApiError(msg, response.status, data);
+            }
+
             return data as T;
           }
         } catch (retryError) {
@@ -132,10 +156,7 @@ class ApiService {
       }
       
       if (error instanceof Error) {
-        throw {
-          error: 'Network error',
-          detail: error.message,
-        } as ApiError;
+        throw new ApiError(error.message || 'Network error', undefined, { error: error.message });
       }
       throw error;
     }
@@ -193,25 +214,30 @@ class ApiService {
     try {
       const response = await fetch(url, config);
       console.log('📡 Logout Response Status:', response.status);
-      
-      const data = await response.json();
+
+      let data: any;
+      try {
+        const text = await response.text();
+        data = (text && response.headers.get('content-type')?.includes('application/json'))
+          ? JSON.parse(text)
+          : {};
+      } catch (_) {
+        data = {};
+      }
       console.log('📊 Logout Response Data:', data);
 
       if (!response.ok) {
-        throw {
-          status: response.status,
-          ...data,
-        } as ApiError;
+        throw new ApiError(data.message || 'API Error', response.status, data);
       }
 
       return data as { message: string };
     } catch (error) {
       console.error('❌ Logout Error:', error);
       if (error instanceof Error) {
-        throw {
+        throw new ApiError('Network error', undefined, {
           error: 'Network error',
           detail: error.message,
-        } as ApiError;
+        });
       }
       throw error;
     }

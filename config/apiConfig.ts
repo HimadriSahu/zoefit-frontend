@@ -7,11 +7,14 @@ const API_CONFIG = {
   
 // Development URLs in order of preference
   development: [
-    'http://10.0.2.2:8000', // Android emulator localhost
+    'http://10.0.2.2:8000', // Android emulator → host machine localhost (try first when on Android)
     'http://localhost:8000',
-    'http://127.0.0.1:8000', 
+    'http://127.0.0.1:8000',
     'http://192.168.1.4:8000', // Current machine IP
-    'http://192.168.1.5:8000', // Common local network
+    'http://172.23.148.1:8000', // Common local network
+    'http://192.168.0.192:8000',
+    'http://10.189.95.1:8001',
+    
   ],
   
   // Timeout settings
@@ -58,9 +61,10 @@ export const getApiBaseUrl = async (): Promise<string> => {
     }
   }
   
-  // If all URLs fail, return the first one as fallback
-  console.warn('⚠️ All API URLs failed, using fallback:', API_CONFIG.development[0]);
-  return API_CONFIG.development[0];
+  // If all URLs fail, use platform-appropriate fallback
+  const fallback = isAndroid ? 'http://10.0.2.2:8000' : API_CONFIG.development[0];
+  console.warn('⚠️ All API URLs failed, using fallback:', fallback);
+  return fallback;
 };
 
 // Get API URL synchronously (for immediate use)

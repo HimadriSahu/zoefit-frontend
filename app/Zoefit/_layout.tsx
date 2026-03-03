@@ -22,6 +22,17 @@ export default function TabLayout() {
         },
       }}
     >
+        {/* <Tabs.Screen
+        name="welcomePage"
+        options={{
+          title: 'welcomePage',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sparkles" size={size} color={color} />
+          ),
+          headerShown: false,
+          // headerTitle: 'ZoeFit',
+        }}
+      /> */}
       <Tabs.Screen
         name="home"
         options={{
@@ -66,6 +77,55 @@ export default function TabLayout() {
           // headerTitle: 'ZoeFit',
         }}
       />
+      {/* <Tabs.Screen
+        name="personalizing"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="birthday"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="dinner-time"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="gender"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="height"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="weight"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="goal"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+      /> */}
     </Tabs>
   );
 }
