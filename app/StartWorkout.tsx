@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ï»¿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,26 +9,45 @@ import {
   Modal,
   Animated,
   Dimensions,
+  StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from './screens/ThemeContext';
+import { aiService } from '../services/ai';
+import { authService } from '../services/auth';
+import { WorkoutCompletionData } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
 interface WorkoutType {
   id: string;
   name: string;
-  icon: string;
   duration: number;
   calories: number;
   description: string;
+}
+
+interface WorkoutPlan {
+  id: number;
+  day: number;
+  exercises: any[];
+  workout_type: string;
+  estimated_duration: number;
+  difficulty_level: string;
+  intensity_score: number;
+  equipment_needed: string[];
+  completed: boolean;
+  completion_time?: string;
+  user_rating?: number;
 }
 
 const workoutTypes: WorkoutType[] = [
   {
     id: 'cardio',
     name: 'Cardio',
-    icon: '=ƒÅâGÇìGÖén+Å',
     duration: 30,
     calories: 300,
     description: 'Running, cycling, or elliptical training'
@@ -36,7 +55,6 @@ const workoutTypes: WorkoutType[] = [
   {
     id: 'strength',
     name: 'Strength',
-    icon: '=ƒÅïn+ÅGÇìGÖén+Å',
     duration: 45,
     calories: 250,
     description: 'Weight training and resistance exercises'
@@ -44,7 +62,6 @@ const workoutTypes: WorkoutType[] = [
   {
     id: 'yoga',
     name: 'Yoga',
-    icon: '=ƒºÿGÇìGÖén+Å',
     duration: 60,
     calories: 180,
     description: 'Flexibility, balance, and mindfulness'
@@ -52,7 +69,6 @@ const workoutTypes: WorkoutType[] = [
   {
     id: 'hiit',
     name: 'HIIT',
-    icon: 'GÜí',
     duration: 20,
     calories: 400,
     description: 'High-intensity interval training'
@@ -60,7 +76,6 @@ const workoutTypes: WorkoutType[] = [
   {
     id: 'swimming',
     name: 'Swimming',
-    icon: '=ƒÅèGÇìGÖén+Å',
     duration: 40,
     calories: 350,
     description: 'Full-body aquatic workout'
@@ -68,7 +83,6 @@ const workoutTypes: WorkoutType[] = [
   {
     id: 'cycling',
     name: 'Cycling',
-    icon: '=ƒÜ¦GÇìGÖén+Å',
     duration: 45,
     calories: 320,
     description: 'Indoor or outdoor cycling'
@@ -77,12 +91,16 @@ const workoutTypes: WorkoutType[] = [
 
 const StartWorkout: React.FC = () => {
   const router = useRouter();
+  const { theme } = useTheme();
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutType | null>(null);
   const [customDuration, setCustomDuration] = useState<number>(30);
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showDurationModal, setShowDurationModal] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [isLoading, setIsLoading] = useState(false);
+  const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
+  const [currentWorkoutPlan, setCurrentWorkoutPlan] = useState<WorkoutPlan | null>(null);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -106,18 +124,115 @@ const StartWorkout: React.FC = () => {
       duration: 500,
       useNativeDriver: true,
     }).start();
+
+    // Load existing workout plans
+    loadWorkoutPlans();
   }, []);
 
-  const handleWorkoutComplete = () => {
+  const loadWorkoutPlans = async () => {
+    try {
+      setIsLoading(true);
+
+      // Check if user is authenticated first
+      const isAuth = await authService.isAuthenticated();
+      if (!isAuth) {
+        console.log('âš ï¸ User not authenticated, using default workouts');
+        return;
+      }
+
+      const plans = await aiService.getWorkoutPlans();
+      setWorkoutPlans(plans);
+      console.log('âœ… Workout plans loaded:', plans.length, 'plans');
+    } catch (error) {
+      console.warn('âš ï¸ Could not load workout plans:', error);
+      // Continue with default workout types
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const generateNewWorkoutPlan = async () => {
+    try {
+      setIsLoading(true);
+
+      // Check if user is authenticated first
+      const isAuth = await authService.isAuthenticated();
+      if (!isAuth) {
+        Alert.alert('Authentication Required', 'Please log in to generate personalized workout plans.');
+        return;
+      }
+
+      const response = await aiService.generateWorkoutPlan();
+      setCurrentWorkoutPlan(response.workout_plan);
+      setWorkoutPlans([...workoutPlans, response.workout_plan]);
+      console.log('âœ… New workout plan generated:', response.workout_plan);
+      Alert.alert('Success', 'New personalized workout plan generated!');
+    } catch (error) {
+      console.error('âŒ Failed to generate workout plan:', error);
+      Alert.alert('Error', 'Failed to generate workout plan. Using default workouts.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleWorkoutComplete = async () => {
     setIsWorkoutActive(false);
+
+    // Save workout completion to backend
+    await saveWorkoutCompletion(true);
+
     Alert.alert(
-      'Workout Complete! =ƒÄë',
+      'Workout Complete! ðŸŽ‰',
       `Great job! You burned ${selectedWorkout?.calories || 0} calories in ${formatTime(elapsedTime)}.`,
       [
         { text: 'View Summary', onPress: () => router.push('/Zoefit/home') },
         { text: 'Start Another', onPress: resetWorkout },
       ]
     );
+  };
+
+  const saveWorkoutCompletion = async (completed: boolean) => {
+    try {
+      setIsLoading(true);
+
+      // Calculate actual calories based on duration and intensity
+      const actualCalories = Math.round(
+        (selectedWorkout?.calories || 0) *
+        (elapsedTime / ((selectedWorkout?.duration || 30) * 60))
+      );
+
+      const completionData: WorkoutCompletionData = {
+        workout_plan_id: currentWorkoutPlan?.id || null, // Allow null for default workouts
+        completed: completed,
+        completion_time: formatTime(elapsedTime),
+        calories_burned: actualCalories,
+        completion_time_minutes: Math.round(elapsedTime / 60), // Add duration in minutes
+        workout_type: selectedWorkout?.name || currentWorkoutPlan?.workout_type || 'Workout', // Add workout type
+      };
+
+      await aiService.completeWorkout(completionData);
+      console.log('âœ… Workout completion saved to backend:', completionData);
+
+      // Show success message to user
+      Alert.alert(
+        'Workout Saved!',
+        `Great job! You completed ${completionData.workout_type} for ${formatTime(elapsedTime)} and burned ${completionData.calories_burned} calories.`,
+        [{ text: 'OK', onPress: () => router.push('/Zoefit/home') }]
+      );
+
+      // Trigger home screen refresh
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await AsyncStorage.setItem('workout_completed', Date.now().toString());
+      } catch (storageError) {
+        console.warn('âš ï¸ Could not trigger home screen refresh:', storageError);
+      }
+    } catch (error) {
+      console.error('âŒ Failed to save workout completion:', error);
+      // Don't show error to user immediately, just log it
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const resetWorkout = () => {
@@ -149,44 +264,79 @@ const StartWorkout: React.FC = () => {
   };
 
   const stopWorkout = () => {
+    const actualCalories = Math.round((elapsedTime / ((selectedWorkout?.duration || 30) * 60)) * (selectedWorkout?.calories || 0));
+
     Alert.alert(
       'Stop Workout?',
-      'Are you sure you want to stop your current workout?',
+      `You've completed ${formatTime(elapsedTime)} of your workout.\nEstimated calories burned: ${actualCalories}`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Stop', onPress: resetWorkout, style: 'destructive' },
+        { text: 'Continue Workout', style: 'cancel' },
+        {
+          text: 'Stop & Save',
+          onPress: () => handleWorkoutSummary(actualCalories),
+          style: 'destructive'
+        },
+      ]
+    );
+  };
+
+  const handleWorkoutSummary = async (caloriesBurned: number) => {
+    const workoutData = {
+      workoutType: selectedWorkout?.name,
+      duration: formatTime(elapsedTime),
+      calories: caloriesBurned,
+      completed: elapsedTime >= ((selectedWorkout?.duration || 30) * 60) * 0.8,
+      timestamp: new Date().toISOString()
+    };
+
+    // Save workout completion to backend
+    await saveWorkoutCompletion(workoutData.completed);
+
+    console.log('Workout Summary:', workoutData);
+
+    Alert.alert(
+      'Workout Saved!',
+      `Great job! ${workoutData.completed ? 'Workout completed!' : 'Workout saved for partial completion.'}\n\nDuration: ${workoutData.duration}\nCalories: ${workoutData.calories}`,
+      [
+        {
+          text: 'OK', onPress: () => {
+            resetWorkout();
+            router.push('/Zoefit/home');
+          }
+        },
+        { text: 'Start Another', onPress: () => resetWorkout() },
       ]
     );
   };
 
   const renderWorkoutSelection = () => (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <Animated.View style={[styles.container, { backgroundColor: theme.background, opacity: fadeAnim }]}>
       <SafeAreaView style={styles.safeArea}>
         {/* <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>GåÉ Back</Text>
+            <Text style= {styles.backButtonText}>Gï¿½ï¿½ Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Start Workout</Text>
         </View> */}
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView style={[styles.scrollView, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Choose Your Workout</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Choose Your Workout</Text>
             <View style={styles.workoutGrid}>
               {workoutTypes.map((workout) => (
                 <TouchableOpacity
                   key={workout.id}
                   style={[
                     styles.workoutCard,
-                    selectedWorkout?.id === workout.id && styles.selectedWorkoutCard,
+                    { backgroundColor: theme.cardBackground, borderColor: theme.border },
+                    selectedWorkout?.id === workout.id && { backgroundColor: theme.primary },
                   ]}
                   onPress={() => setSelectedWorkout(workout)}
                 >
-                  <Text style={styles.workoutIcon}>{workout.icon}</Text>
-                  <Text style={styles.workoutName}>{workout.name}</Text>
-                  <Text style={styles.workoutDuration}>{workout.duration} min</Text>
-                  <Text style={styles.workoutCalories}>{workout.calories} cal</Text>
-                  <Text style={styles.workoutDescription}>{workout.description}</Text>
+                  <Text style={[styles.workoutName, { color: selectedWorkout?.id === workout.id ? '#fff' : theme.text }]}>{workout.name}</Text>
+                  <Text style={[styles.workoutDuration, { color: selectedWorkout?.id === workout.id ? '#fff' : theme.textSecondary }]}>{workout.duration} min</Text>
+                  <Text style={[styles.workoutCalories, { color: selectedWorkout?.id === workout.id ? '#fff' : theme.textSecondary }]}>{workout.calories} cal</Text>
+                  <Text style={[styles.workoutDescription, { color: selectedWorkout?.id === workout.id ? '#fff' : theme.textSecondary }]}>{workout.description}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -194,18 +344,18 @@ const StartWorkout: React.FC = () => {
 
           {selectedWorkout && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Customize Duration</Text>
-              <View style={styles.durationContainer}>
-                <Text style={styles.durationLabel}>Duration: {customDuration} minutes</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Customize Duration</Text>
+              <View style={[styles.durationContainer, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+                <Text style={[styles.durationLabel, { color: theme.text }]}>Duration: {customDuration} minutes</Text>
                 <View style={styles.durationButtons}>
                   <TouchableOpacity
-                    style={styles.durationButton}
+                    style={[styles.durationButton, { backgroundColor: theme.primary }]}
                     onPress={() => setCustomDuration(Math.max(5, customDuration - 5))}
                   >
                     <Text style={styles.durationButtonText}>-5</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.durationButton}
+                    style={[styles.durationButton, { backgroundColor: theme.primary }]}
                     onPress={() => setCustomDuration(Math.min(120, customDuration + 5))}
                   >
                     <Text style={styles.durationButtonText}>+5</Text>
@@ -218,7 +368,14 @@ const StartWorkout: React.FC = () => {
           {selectedWorkout && (
             <View style={styles.section}>
               <TouchableOpacity style={styles.startButton} onPress={startWorkout}>
-                <Text style={styles.startButtonText}>Start {selectedWorkout.name} Workout</Text>
+                <LinearGradient
+                  colors={theme.headerGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.startButton}
+                >
+                  <Text style={styles.startButtonText}>Start {selectedWorkout.name} Workout</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
@@ -228,10 +385,15 @@ const StartWorkout: React.FC = () => {
   );
 
   const renderActiveWorkout = () => (
-    <View style={styles.activeWorkoutContainer}>
+    <LinearGradient
+      colors={theme.headerGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.activeWorkoutContainer}
+    >
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.workoutHeader}>
-          <Text style={styles.workoutTitle}>{selectedWorkout?.icon} {selectedWorkout?.name}</Text>
+          <Text style={styles.workoutTitle}>{selectedWorkout?.name}</Text>
           <TouchableOpacity onPress={stopWorkout} style={styles.stopButton}>
             <Text style={styles.stopButtonText}>Stop</Text>
           </TouchableOpacity>
@@ -284,11 +446,11 @@ const StartWorkout: React.FC = () => {
         </View>
 
         <View style={styles.motivationContainer}>
-          <Text style={styles.motivationText}>Keep pushing! =ƒÆ¬</Text>
+          <Text style={styles.motivationText}>Keep pushing! </Text>
           <Text style={styles.motivationSubtext}>You're doing great!</Text>
         </View>
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 
   return selectedWorkout && elapsedTime > 0 ? renderActiveWorkout() : renderWorkoutSelection();
@@ -296,8 +458,8 @@ const StartWorkout: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#f8faf8',
+    flex: 2,
+    backgroundColor: '#f0f9ff',
   },
   safeArea: {
     flex: 1,
@@ -305,154 +467,188 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 5,
-    backgroundColor: '#2E7D32',
+    padding: 20,
+    backgroundColor: 'transparent',
   },
   backButton: {
     marginRight: 15,
   },
   backButtonText: {
     fontSize: 16,
-    color: '#fff',
+    color: '#2E7D32',
+    fontWeight: '600',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   scrollView: {
     flex: 1,
+    paddingHorizontal: 20,
   },
   section: {
-    padding: 20,
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginVertical: 15,
+    marginBottom: 25,
+    width: '100%',
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
+    color: '#1a1a1a',
+    marginBottom: 20,
+    marginHorizontal: 5,
   },
   workoutGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    width: '100%',
   },
   workoutCard: {
     width: '48%',
     backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 15,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
     alignItems: 'center',
-    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: 160,
+    boxSizing: 'border-box',
   },
   selectedWorkoutCard: {
-    backgroundColor: '#e8f5e9',
+    backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: '#2E7D32',
-  },
-  workoutIcon: {
-    fontSize: 32,
-    marginBottom: 10,
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
   },
   workoutName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    color: '#1a1a1a',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   workoutDuration: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#2E7D32',
-    fontWeight: '600',
-    marginBottom: 3,
+    fontWeight: '700',
+    marginBottom: 5,
   },
   workoutCalories: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 10,
+    fontWeight: '500',
   },
   workoutDescription: {
-    fontSize: 11,
-    color: '#666',
+    fontSize: 12,
+    color: '#888',
     textAlign: 'center',
+    lineHeight: 16,
   },
   durationContainer: {
     backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 20,
-    elevation: 3,
+    borderRadius: 20,
+    padding: 25,
+    marginVertical: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   durationLabel: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 15,
+    fontSize: 18,
+    color: '#1a1a1a',
+    marginBottom: 20,
     textAlign: 'center',
+    fontWeight: '600',
   },
   durationButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
+    gap: 20,
   },
   durationButton: {
     backgroundColor: '#2E7D32',
-    borderRadius: 25,
-    width: 60,
-    height: 40,
+    borderRadius: 30,
+    width: 70,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   durationButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  startButton: {
-    backgroundColor: '#2E7D32',
-    borderRadius: 15,
-    padding: 20,
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  startButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
+  startButton: {
+    marginVertical: 20,
+    borderRadius: 25,
+    padding: 22,
+    alignItems: 'center',
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
+    overflow: 'hidden',
+  },
+  startButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
   activeWorkoutContainer: {
     flex: 1,
-    backgroundColor: '#2E7D32',
   },
   workoutHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 25,
+    paddingTop: 10,
   },
   workoutTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   stopButton: {
-    backgroundColor: '#d32f2f',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    backgroundColor: '#ff4757',
+    borderRadius: 25,
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    shadowColor: '#ff4757',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   stopButtonText: {
     color: '#fff',
@@ -461,71 +657,90 @@ const styles = StyleSheet.create({
   },
   timerContainer: {
     alignItems: 'center',
-    padding: 30,
+    padding: 40,
+    paddingTop: 20,
   },
   timerLabel: {
-    fontSize: 16,
-    color: '#e8f5e9',
-    marginBottom: 10,
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 15,
+    fontWeight: '500',
   },
   timerText: {
-    fontSize: 48,
+    fontSize: 56,
     fontWeight: 'bold',
     color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   progressContainer: {
-    marginTop: 20,
+    marginTop: 25,
     alignItems: 'center',
+    width: '100%',
   },
   progressBar: {
-    width: width * 0.8,
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 4,
+    width: '85%',
+    height: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 6,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#fff',
-    borderRadius: 4,
+    borderRadius: 6,
   },
   progressText: {
     color: '#fff',
-    fontSize: 14,
-    marginTop: 8,
+    fontSize: 16,
+    marginTop: 12,
+    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 20,
+    padding: 25,
+    gap: 15,
   },
   statCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 20,
     padding: 20,
     alignItems: 'center',
-    minWidth: 80,
+    minWidth: 90,
+    flex: 1,
+    backdropFilter: 'blur(10px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 5,
+    marginBottom: 8,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#e8f5e9',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
   },
   controlsContainer: {
     alignItems: 'center',
-    padding: 20,
+    padding: 25,
+    paddingTop: 15,
   },
   controlButton: {
-    borderRadius: 30,
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-    minWidth: 150,
+    borderRadius: 35,
+    paddingHorizontal: 45,
+    paddingVertical: 18,
+    minWidth: 170,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   pauseButton: {
     backgroundColor: '#ff9800',
@@ -535,22 +750,28 @@ const styles = StyleSheet.create({
   },
   controlButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   motivationContainer: {
     alignItems: 'center',
     padding: 30,
+    paddingTop: 10,
   },
   motivationText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 5,
+    marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   motivationSubtext: {
     fontSize: 16,
-    color: '#e8f5e9',
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
   },
 });
 

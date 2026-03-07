@@ -4,11 +4,13 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Dimensions
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '../../services/auth';
+import { useTheme } from '../screens/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 const ProfileScreen = () => {
   const router = useRouter();
+  const { theme, isDarkMode } = useTheme();
 
   const handleLogout = async () => {
     Alert.alert(
@@ -55,18 +57,18 @@ const ProfileScreen = () => {
   ];
 
   const menuItems = [
-    { id: '1', title: 'Personal Information', icon: '👤', screen: '/personal-info' },
-    { id: '2', title: 'Fitness Goals', icon: '🎯', screen: '/goals' },
-    { id: '3', title: 'Workout History', icon: '📊', screen: '/history' },
-    { id: '4', title: 'Settings', icon: '⚙️', screen: '/settings' },
-    { id: '5', title: 'Help & Support', icon: '❓', screen: '/help' },
+    { id: '1', title: 'Personal Information', icon: '👤', screen: '/screens/personal-info' as const },
+    { id: '2', title: 'Fitness Goals', icon: '🎯', screen: '/screens/goals-settings' as const },
+    { id: '3', title: 'Workout History', icon: '📊', screen: '/screens/workout-history' as const },
+    { id: '4', title: 'Settings', icon: '⚙️', screen: '/screens/settings' as const },
+    { id: '5', title: 'Help & Support', icon: '❓', screen: '/screens/help-support' as const },
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
-      <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top']}>
         <LinearGradient
-          colors={['#667eea', '#764ba2', '#f093fb']}
+          colors={isDarkMode ? ['#667eea', '#764ba2', '#f093fb'] : theme.headerGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
@@ -86,18 +88,20 @@ const ProfileScreen = () => {
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.statsContainer}>
             <Text style={styles.sectionTitle}>Your Progress</Text>
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{profileData.totalWorkouts}</Text>
-                <Text style={styles.statLabel}>Workouts</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{profileData.totalCalories.toLocaleString()}</Text>
-                <Text style={styles.statLabel}>Calories</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{profileData.streak}</Text>
-                <Text style={styles.statLabel}>Day Streak</Text>
+            <View style={[styles.statsContainer, { backgroundColor: theme.cardBackground }]}>
+              <View style={[styles.statsGrid, { backgroundColor: theme.cardBackground }]}>
+                <View style={[styles.statCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+                  <Text style={[styles.statNumber, { color: theme.text }]}>{profileData.totalWorkouts}</Text>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total Workouts</Text>
+                </View>
+                <View style={[styles.statCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+                  <Text style={[styles.statNumber, { color: theme.text }]}>{profileData.totalCalories.toLocaleString()}</Text>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total Calories</Text>
+                </View>
+                <View style={[styles.statCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+                  <Text style={[styles.statNumber, { color: theme.text }]}>{profileData.streak}</Text>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Day Streak</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -120,8 +124,8 @@ const ProfileScreen = () => {
             <Text style={styles.sectionTitle}>Achievements</Text>
             <View style={styles.achievementsGrid}>
               {achievements.map((achievement) => (
-                <View 
-                  key={achievement.id} 
+                <View
+                  key={achievement.id}
                   style={[styles.achievementCard, !achievement.earned && styles.achievementLocked]}
                 >
                   <Text style={[styles.achievementIcon, !achievement.earned && styles.achievementIconLocked]}>
@@ -141,15 +145,7 @@ const ProfileScreen = () => {
               <TouchableOpacity
                 key={item.id}
                 style={styles.menuItem}
-                onPress={() => {
-                  if (item.screen === '/personal-info') {
-                    router.push('/screens/personal-info');
-                  } else if (item.screen === '/settings') {
-                    router.push('/screens/settings');
-                  } else {
-                    Alert.alert('Coming Soon', `${item.title} feature is coming soon!`);
-                  }
-                }}
+                onPress={() => router.push(item.screen)}
               >
                 <Text style={styles.menuIcon}>{item.icon}</Text>
                 <Text style={styles.menuTitle}>{item.title}</Text>
@@ -224,7 +220,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 5,
-    textShadowColor: '#764ba2',
+    textShadowColor: '#047857',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
@@ -243,7 +239,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#7591b9ff',
     marginBottom: 15,
     letterSpacing: 0.5,
   },
@@ -253,56 +249,54 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
+    backgroundColor: '#fff',
     borderRadius: 18,
     padding: 20,
     marginHorizontal: 5,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    shadowColor: '#667eea',
+    borderColor: '#e5e7eb',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 6,
   },
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1f2937',
   },
   statLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    color: '#6b7280',
     marginTop: 5,
   },
   levelContainer: {
     padding: 20,
   },
   levelCard: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
+    backgroundColor: '#fff',
     borderRadius: 18,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    shadowColor: '#667eea',
+    borderColor: '#e5e7eb',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 6,
   },
   levelText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1f2937',
     textAlign: 'center',
     marginBottom: 5,
   },
   levelDescription: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    color: '#6b7280',
     textAlign: 'center',
     marginBottom: 15,
   },
@@ -323,7 +317,7 @@ const styles = StyleSheet.create({
   },
   levelProgressText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    color: '#6b7280',
   },
   achievementsContainer: {
     padding: 20,
@@ -335,14 +329,18 @@ const styles = StyleSheet.create({
   },
   achievementCard: {
     width: '30%',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
+    backgroundColor: '#fff',
     borderRadius: 15,
     padding: 15,
     alignItems: 'center',
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#e5e7eb',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
   achievementLocked: {
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -357,7 +355,7 @@ const styles = StyleSheet.create({
   },
   achievementName: {
     fontSize: 10,
-    color: '#fff',
+    color: '#1f2937',
     textAlign: 'center',
     fontWeight: '600',
   },
@@ -370,13 +368,17 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
+    backgroundColor: '#fff',
     borderRadius: 15,
     padding: 18,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#e5e7eb',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
   menuIcon: {
     fontSize: 20,
@@ -385,12 +387,12 @@ const styles = StyleSheet.create({
   menuTitle: {
     flex: 1,
     fontSize: 16,
-    color: '#fff',
+    color: '#1f2937',
     fontWeight: '600',
   },
   menuArrow: {
     fontSize: 20,
-    color: 'rgba(255,255,255,0.6)',
+    color: '#9ca3af',
   },
   logoutContainer: {
     padding: 20,
@@ -426,11 +428,11 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
+    color: '#9ca3af',
     marginBottom: 5,
   },
   versionSubtext: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.4)',
+    color: '#d1d5db',
   },
 });

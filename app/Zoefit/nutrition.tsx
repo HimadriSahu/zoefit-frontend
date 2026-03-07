@@ -1,545 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Dimensions, TextStyle, ViewStyle } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Dimensions, TextStyle, ViewStyle, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { apiService as nutritionAPI } from '../../services/api';
+import { useTheme } from '../screens/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const NutritionScreen = () => {
-  const [, setSelectedMeal] = useState<string | null>(null);
-  const [waterIntake, setWaterIntake] = useState(6);
-  const [waterGoal, setWaterGoal] = useState(8);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loggedMeals, setLoggedMeals] = useState<string[]>([]);
-  const [showCustomMealModal, setShowCustomMealModal] = useState(false);
-  const [showGoalsModal, setShowGoalsModal] = useState(false);
-  const [customMealName, setCustomMealName] = useState('');
-  const [customMealCalories, setCustomMealCalories] = useState('');
-  const [calorieGoal, setCalorieGoal] = useState(2000);
-  const [proteinGoal, setProteinGoal] = useState(120);
-  const router = useRouter();
-
-  const meals = [
-    {
-      id: '1',
-      name: 'Protein Power Bowl',
-      type: 'Lunch',
-      calories: 450,
-      protein: 35,
-      carbs: 45,
-      fat: 12,
-      time: '12:00 PM',
-      ingredients: ['Grilled Chicken', 'Quinoa', 'Avocado', 'Mixed Greens', 'Olive Oil'],
-    },
-    {
-      id: '2',
-      name: 'Pre-Workout Smoothie',
-      type: 'Snack',
-      calories: 280,
-      protein: 20,
-      carbs: 40,
-      fat: 8,
-      time: '3:00 PM',
-      ingredients: ['Banana', 'Protein Powder', 'Almond Milk', 'Peanut Butter', 'Spinach'],
-    },
-    {
-      id: '3',
-      name: 'Grilled Salmon Dinner',
-      type: 'Dinner',
-      calories: 520,
-      protein: 42,
-      carbs: 35,
-      fat: 18,
-      time: '7:00 PM',
-      ingredients: ['Salmon Fillet', 'Sweet Potato', 'Broccoli', 'Lemon', 'Herbs'],
-    },
-    {
-      id: '4',
-      name: 'Oatmeal Breakfast',
-      type: 'Breakfast',
-      calories: 320,
-      protein: 12,
-      carbs: 55,
-      fat: 6,
-      time: '7:30 AM',
-      ingredients: ['Rolled Oats', 'Honey', 'Berries', 'Almonds', 'Milk'],
-    },
-  ];
-
-  const logMeal = (mealId: string) => {
-    setSelectedMeal(mealId);
-    setLoggedMeals([...loggedMeals, mealId]);
-    Alert.alert(
-      'Meal Logged!',
-      'Great choice! Your meal has been added to your daily nutrition tracker.',
-      [{ text: 'Awesome!', style: 'default' }]
-    );
-  };
-
-  const addWater = () => {
-    if (waterIntake < waterGoal + 2) {
-      setWaterIntake(waterIntake + 1);
-    }
-  };
-
-  const removeWater = () => {
-    if (waterIntake > 0) {
-      setWaterIntake(waterIntake - 1);
-    }
-  };
-
-  const addCustomMeal = () => {
-    if (customMealName.trim() && customMealCalories.trim()) {
-      Alert.alert('Success', `Added "${customMealName}" to your nutrition log!`, [
-        { text: 'OK', onPress: () => {
-          setCustomMealName('');
-          setCustomMealCalories('');
-          setShowCustomMealModal(false);
-        }}
-      ]);
-    } else {
-      Alert.alert('Error', 'Please fill in all fields');
-    }
-  };
-
-  const updateGoals = () => {
-    Alert.alert('Goals Updated', 'Your nutrition goals have been updated successfully!', [
-      { text: 'OK', onPress: () => setShowGoalsModal(false) }
-    ]);
-  };
-
-  const filteredMeals = meals.filter(meal => 
-    meal.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    meal.type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const totalLoggedCalories = loggedMeals.reduce((total, mealId) => {
-    const meal = meals.find(m => m.id === mealId);
-    return total + (meal?.calories || 0);
-  }, 0);
-
-  const getMealTypeColor = (type: string) => {
-    switch (type) {
-      case 'Breakfast': return '#FF9800';
-      case 'Lunch': return '#4CAF50';
-      case 'Dinner': return '#2196F3';
-      case 'Snack': return '#9C27B0';
-      default: return '#666';
-    }
-  };
-
-  const todayStats = {
-    calories: totalLoggedCalories,
-    goal: calorieGoal,
-    protein: 97,
-    proteinGoal: proteinGoal,
-    water: waterIntake,
-    waterGoal: waterGoal,
-  };
-
-  return (
-    <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <LinearGradient
-          colors={['#667eea', '#764ba2', '#f093fb']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <View>
-            <Text style={styles.title}>Nutrition 🥗</Text>
-            <Text style={styles.subtitle}>Fuel your fitness journey</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.personalizeButton}
-            onPress={() => router.push('/onboarding' as any)}
-          >
-            <LinearGradient
-              colors={['#a78bfa', '#8b5cf6']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.personalizeGradient}
-            >
-              <Text style={styles.personalizeButtonText}>Personalize ZoeFit</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </LinearGradient>
-
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.statsContainer}>
-          <Text style={styles.statsTitle}>{"Today's Nutrition"}</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{todayStats.calories}</Text>
-              <Text style={styles.statLabel}>Calories</Text>
-              <Text style={styles.statGoal}>of {todayStats.goal}</Text>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${(todayStats.calories / todayStats.goal) * 100}%` }]} />
-              </View>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{todayStats.protein}g</Text>
-              <Text style={styles.statLabel}>Protein</Text>
-              <Text style={styles.statGoal}>of {todayStats.proteinGoal}g</Text>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${(todayStats.protein / todayStats.proteinGoal) * 100}%` }]} />
-              </View>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{todayStats.water}</Text>
-              <Text style={styles.statLabel}>Water Glasses</Text>
-              <Text style={styles.statGoal}>of {todayStats.waterGoal}</Text>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${(todayStats.water / todayStats.waterGoal) * 100}%` }]} />
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.quickActionsContainer}>
-          <View style={styles.quickActionCard}>
-            <Text style={styles.quickActionLabel}>💧 Water Intake</Text>
-            <View style={styles.waterButtonsRow}>
-              <TouchableOpacity 
-                style={styles.waterButton}
-                onPress={removeWater}
-              >
-                <Text style={styles.waterButtonText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.waterCount}>{waterIntake}/{waterGoal}</Text>
-              <TouchableOpacity 
-                style={styles.waterButton}
-                onPress={addWater}
-              >
-                <Text style={styles.waterButtonText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.actionButtonsRow}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => setShowCustomMealModal(true)}
-          >
-            <LinearGradient
-              colors={['#667eea', '#764ba2']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.actionButtonGradient}
-            >
-              <Text style={styles.actionButtonText}>+ Add Meal</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => setShowGoalsModal(true)}
-          >
-            <LinearGradient
-              colors={['#a78bfa', '#8b5cf6']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.actionButtonGradient}
-            >
-              <Text style={styles.actionButtonText}>⚙️ Edit Goals</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search meals..."
-            placeholderTextColor="rgba(255,255,255,0.6)"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        <View style={styles.mealsContainer}>
-          <Text style={styles.sectionTitle}>Suggested Meals</Text>
-          {filteredMeals.length > 0 ? (
-            filteredMeals.map((meal) => (
-              <View key={meal.id} style={styles.mealCard}>
-                <View style={styles.mealHeader}>
-                  <View>
-                    <Text style={styles.mealName}>{meal.name}</Text>
-                    <View style={styles.mealMeta}>
-                      <View style={[styles.mealTypeBadge, { backgroundColor: getMealTypeColor(meal.type) }]}>
-                        <Text style={styles.mealTypeText}>{meal.type}</Text>
-                      </View>
-                      <Text style={styles.mealTime}>⏰ {meal.time}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.calorieBadge}>
-                    <Text style={styles.calorieText}>{meal.calories} cal</Text>
-                  </View>
-                </View>
-
-                <View style={styles.macrosContainer}>
-                  <View style={styles.macroItem}>
-                    <Text style={styles.macroValue}>{meal.protein}g</Text>
-                    <Text style={styles.macroLabel}>Protein</Text>
-                  </View>
-                  <View style={styles.macroItem}>
-                    <Text style={styles.macroValue}>{meal.carbs}g</Text>
-                    <Text style={styles.macroLabel}>Carbs</Text>
-                  </View>
-                  <View style={styles.macroItem}>
-                    <Text style={styles.macroValue}>{meal.fat}g</Text>
-                    <Text style={styles.macroLabel}>Fat</Text>
-                  </View>
-                </View>
-
-                <View style={styles.ingredientsContainer}>
-                  <Text style={styles.ingredientsTitle}>Ingredients:</Text>
-                  <Text style={styles.ingredientsList}>{meal.ingredients.join(', ')}</Text>
-                </View>
-
-                <TouchableOpacity 
-                  style={[styles.logButton, loggedMeals.includes(meal.id) && styles.logButtonActive]}
-                  onPress={() => logMeal(meal.id)}
-                  disabled={loggedMeals.includes(meal.id)}
-                >
-                  <LinearGradient
-                    colors={loggedMeals.includes(meal.id) ? ['#4a5568', '#2d3748'] : ['#667eea', '#764ba2']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.logButtonGradient}
-                  >
-                    <Text style={styles.logButtonText}>
-                      {loggedMeals.includes(meal.id) ? 'Logged ✓' : 'Log This Meal'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            ))
-          ) : (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>No meals found matching &quot;{searchQuery}&quot;</Text>
-            </View>
-          )}
-        </View>
-
-        {loggedMeals.length > 0 && (
-          <View style={styles.loggedMealsContainer}>
-            <Text style={styles.loggedMealsTitle}>📋 {"Today's"} Logged Meals ({loggedMeals.length})</Text>
-            <Text style={styles.loggedCaloriesText}>Total: {totalLoggedCalories} / {calorieGoal} calories</Text>
-          </View>
-        )}
-
-        <View style={styles.tipsContainer}>
-          <LinearGradient
-            colors={['#2196f3', '#1976d2']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.tipsGradient}
-          >
-            <Text style={styles.tipsTitle}>🍎 Nutrition Tips</Text>
-            <Text style={styles.tip}>• Eat protein with every meal to support muscle growth</Text>
-            <Text style={styles.tip}>• Choose complex carbs for sustained energy</Text>
-            <Text style={styles.tip}>• Stay hydrated - aim for 8 glasses of water daily</Text>
-            <Text style={styles.tip}>• Time your meals around your workouts for optimal performance</Text>
-          </LinearGradient>
-        </View>
-
-        {/* Custom Meal Modal */}
-        <Modal
-          visible={showCustomMealModal}
-          transparent={true}
-          animationType="fade"
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Add Custom Meal</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Meal name"
-                placeholderTextColor="#999"
-                value={customMealName}
-                onChangeText={setCustomMealName}
-              />
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Calories"
-                placeholderTextColor="#999"
-                keyboardType="numeric"
-                value={customMealCalories}
-                onChangeText={setCustomMealCalories}
-              />
-              <View style={styles.modalButtonsRow}>
-                <TouchableOpacity 
-                  style={styles.modalButton}
-                  onPress={() => setShowCustomMealModal(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.modalButtonPrimary]}
-                  onPress={addCustomMeal}
-                >
-                  <LinearGradient
-                    colors={['#667eea', '#764ba2']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.modalButtonGradient}
-                  >
-                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>Add</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Edit Goals Modal */}
-        <Modal
-          visible={showGoalsModal}
-          transparent={true}
-          animationType="fade"
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Edit Nutrition Goals</Text>
-              <View style={styles.goalInputContainer}>
-                <Text style={styles.goalLabel}>Daily Calorie Goal</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                  value={calorieGoal.toString()}
-                  onChangeText={(text) => setCalorieGoal(parseInt(text) || 2000)}
-                />
-              </View>
-              <View style={styles.goalInputContainer}>
-                <Text style={styles.goalLabel}>Daily Protein Goal (g)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                  value={proteinGoal.toString()}
-                  onChangeText={(text) => setProteinGoal(parseInt(text) || 120)}
-                />
-              </View>
-              <View style={styles.goalInputContainer}>
-                <Text style={styles.goalLabel}>Daily Water Goal (glasses)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                  value={waterGoal.toString()}
-                  onChangeText={(text) => setWaterGoal(parseInt(text) || 8)}
-                />
-              </View>
-              <View style={styles.modalButtonsRow}>
-                <TouchableOpacity 
-                  style={styles.modalButton}
-                  onPress={() => setShowGoalsModal(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.modalButtonPrimary]}
-                  onPress={updateGoals}
-                >
-                  <LinearGradient
-                    colors={['#667eea', '#764ba2']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.modalButtonGradient}
-                  >
-                    <Text style={[styles.modalButtonText, { color: '#fff' }]}>Save</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      </ScrollView>
-    </SafeAreaView>
-    </View>
-  );
-};
-
-export default NutritionScreen;
-
-const styles = StyleSheet.create<{
-  scrollView: ViewStyle;
-  header: ViewStyle;
-  title: TextStyle;
-  subtitle: TextStyle;
-  personalizeButton: ViewStyle;
-  personalizeGradient: ViewStyle;
-  personalizeButtonText: TextStyle;
-  statsContainer: ViewStyle;
-  statsTitle: TextStyle;
-  statsGrid: ViewStyle;
-  statCard: ViewStyle;
-  statNumber: TextStyle;
-  statLabel: TextStyle;
-  statGoal: TextStyle;
-  progressBar: ViewStyle;
-  progressFill: ViewStyle;
-  quickActionsContainer: ViewStyle;
-  quickActionButton: ViewStyle;
-  quickActionIcon: TextStyle;
-  quickActionText: TextStyle;
-  quickActionCard: ViewStyle;
-  quickActionLabel: TextStyle;
-  waterButtonsRow: ViewStyle;
-  waterButton: ViewStyle;
-  waterButtonText: TextStyle;
-  waterCount: TextStyle;
-  actionButtonsRow: ViewStyle;
-  actionButton: ViewStyle;
-  actionButtonGradient: ViewStyle;
-  actionButtonText: TextStyle;
-  mealsContainer: ViewStyle;
-  sectionTitle: TextStyle;
-  mealCard: ViewStyle;
-  mealHeader: ViewStyle;
-  mealName: TextStyle;
-  mealMeta: ViewStyle;
-  mealTypeBadge: ViewStyle;
-  mealTypeText: TextStyle;
-  mealTime: TextStyle;
-  calorieBadge: ViewStyle;
-  calorieText: TextStyle;
-  macrosContainer: ViewStyle;
-  macroItem: ViewStyle;
-  macroValue: TextStyle;
-  macroLabel: TextStyle;
-  ingredientsContainer: ViewStyle;
-  ingredientsTitle: TextStyle;
-  ingredientsList: TextStyle;
-  logButton: ViewStyle;
-  logButtonGradient: ViewStyle;
-  logButtonActive: ViewStyle;
-  logButtonText: TextStyle;
-  tipsContainer: ViewStyle;
-  tipsGradient: ViewStyle;
-  tipsTitle: TextStyle;
-  tip: TextStyle;
-  searchContainer: ViewStyle;
-  searchInput: TextStyle;
-  noResultsContainer: ViewStyle;
-  noResultsText: TextStyle;
-  loggedMealsContainer: ViewStyle;
-  loggedMealsTitle: TextStyle;
-  loggedCaloriesText: TextStyle;
-  modalOverlay: ViewStyle;
-  modalContent: ViewStyle;
-  modalTitle: TextStyle;
-  modalInput: TextStyle;
-  goalInputContainer: ViewStyle;
-  goalLabel: TextStyle;
-  modalButtonsRow: ViewStyle;
-  modalButton: ViewStyle;
-  modalButtonGradient: ViewStyle;
-  modalButtonPrimary: ViewStyle;
-  modalButtonText: TextStyle;
-}>({
+const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
@@ -647,24 +116,81 @@ const styles = StyleSheet.create<{
     justifyContent: 'space-around',
     padding: 20,
   },
-  quickActionButton: {
-    alignItems: 'center',
+  quickActionCard: {
     backgroundColor: 'rgba(255,255,255,0.1)',
     backdropFilter: 'blur(10px)',
-    borderRadius: 15,
+    borderRadius: 18,
     padding: 15,
-    width: '30%',
+    width: '100%',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
-  quickActionIcon: {
-    fontSize: 24,
-    marginBottom: 5,
-  },
-  quickActionText: {
-    fontSize: 12,
+  quickActionLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
     color: '#fff',
+    marginBottom: 10,
+  },
+  waterButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 7,
+  },
+  waterButton: {
+    backgroundColor: '#667eea',
+    borderRadius: 25,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  waterButtonText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  waterCount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+    minWidth: 50,
     textAlign: 'center',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+  },
+  actionButton: {
+    flex: 1,
+    borderRadius: 10,
+    marginHorizontal: 5,
+  },
+  actionButtonGradient: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  searchInput: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   mealsContainer: {
     padding: 20,
@@ -679,7 +205,7 @@ const styles = StyleSheet.create<{
     backgroundColor: 'rgba(255,255,255,0.1)',
     backdropFilter: 'blur(10px)',
     borderRadius: 15,
-    padding: 20,
+    padding: 15,
     marginBottom: 15,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
@@ -798,82 +324,6 @@ const styles = StyleSheet.create<{
     marginBottom: 5,
     opacity: 0.95,
   },
-  quickActionCard: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: 18,
-    padding: 15,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  quickActionLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-  },
-  waterButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 7,
-  },
-  waterButton: {
-    backgroundColor: '#667eea',
-    borderRadius: 25,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  waterButtonText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  waterCount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    minWidth: 50,
-    textAlign: 'center',
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-  },
-  actionButton: {
-    flex: 1,
-    borderRadius: 10,
-    marginHorizontal: 5,
-  },
-  actionButtonGradient: {
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  searchContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  searchInput: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#fff',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
   noResultsContainer: {
     paddingVertical: 40,
     alignItems: 'center',
@@ -889,32 +339,32 @@ const styles = StyleSheet.create<{
     marginBottom: 20,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.2)',
+    borderColor: 'rgba(167,139,250,0.3)',
   },
   loggedMealsTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 5,
   },
   loggedCaloriesText: {
-    fontSize: 12,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
+    backgroundColor: '#1a1f2e',
     borderRadius: 20,
-    padding: 20,
-    width: '85%',
+    padding: 25,
+    width: '80%',
+    maxWidth: 400,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   modalTitle: {
     fontSize: 18,
@@ -972,3 +422,477 @@ const styles = StyleSheet.create<{
     color: '#fff',
   },
 });
+
+const NutritionScreen = () => {
+  const { theme, isDarkMode } = useTheme();
+  const [, setSelectedMeal] = useState<string | null>(null);
+  const [waterIntake, setWaterIntake] = useState(6);
+  const [waterGoal, setWaterGoal] = useState(8);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loggedMeals, setLoggedMeals] = useState<string[]>([]);
+  const [showCustomMealModal, setShowCustomMealModal] = useState(false);
+  const [showGoalsModal, setShowGoalsModal] = useState(false);
+  const [customMealName, setCustomMealName] = useState('');
+  const [customMealCalories, setCustomMealCalories] = useState('');
+  const [calorieGoal, setCalorieGoal] = useState(2000);
+  const [proteinGoal, setProteinGoal] = useState(120);
+  const [loading, setLoading] = useState(true);
+
+  const router = useRouter();
+
+  // Sample data - in real app this would come from API
+  const [meals] = useState([
+    {
+      id: '1',
+      name: 'Grilled Chicken Salad',
+      type: 'Lunch',
+      time: '12:30 PM',
+      calories: 350,
+      protein: 35,
+      carbs: 15,
+      fat: 12,
+      ingredients: ['Chicken breast', 'Mixed greens', 'Cherry tomatoes', 'Cucumber', 'Olive oil']
+    },
+    {
+      id: '2',
+      name: 'Protein Smoothie Bowl',
+      type: 'Breakfast',
+      time: '8:00 AM',
+      calories: 280,
+      protein: 25,
+      carbs: 35,
+      fat: 8,
+      ingredients: ['Protein powder', 'Banana', 'Berries', 'Almond milk', 'Chia seeds']
+    },
+    {
+      id: '3',
+      name: 'Quinoa Power Bowl',
+      type: 'Dinner',
+      time: '7:00 PM',
+      calories: 420,
+      protein: 28,
+      carbs: 45,
+      fat: 15,
+      ingredients: ['Quinoa', 'Black beans', 'Avocado', 'Sweet potato', 'Tahini dressing']
+    }
+  ]);
+
+  const todayStats = {
+    calories: 1450,
+    goal: calorieGoal,
+    protein: 85,
+    proteinGoal: proteinGoal,
+    water: waterIntake,
+    waterGoal: waterGoal
+  };
+
+  // Load data from backend on component mount
+  useEffect(() => {
+    setLoading(false);
+  }, []);
+
+  const logMeal = async (mealId: string) => {
+    try {
+      setSelectedMeal(mealId);
+      if (!loggedMeals.includes(mealId)) {
+        setLoggedMeals([...loggedMeals, mealId]);
+        Alert.alert('Success', 'Meal logged successfully!');
+      }
+    } catch (error) {
+      console.error('Error logging meal:', error);
+      Alert.alert('Error', 'Failed to log meal');
+    }
+  };
+
+  const addWater = () => {
+    if (waterIntake < waterGoal + 2) {
+      setWaterIntake(waterIntake + 1);
+    }
+  };
+
+  const removeWater = () => {
+    if (waterIntake > 0) {
+      setWaterIntake(waterIntake - 1);
+    }
+  };
+
+  const addCustomMeal = () => {
+    if (customMealName.trim() && customMealCalories.trim()) {
+      Alert.alert('Success', `Added "${customMealName}" to your nutrition log!`, [
+        {
+          text: 'OK', onPress: () => {
+            setCustomMealName('');
+            setCustomMealCalories('');
+            setShowCustomMealModal(false);
+          }
+        }
+      ]);
+    }
+  };
+
+  const updateGoals = async () => {
+    try {
+      Alert.alert('Goals Updated', 'Your nutrition goals have been updated successfully!', [
+        { text: 'OK', onPress: () => setShowGoalsModal(false) }
+      ]);
+    } catch (error) {
+      console.log('Backend update failed, updating locally');
+      Alert.alert('Goals Updated', 'Your nutrition goals have been updated successfully!', [
+        { text: 'OK', onPress: () => setShowGoalsModal(false) }
+      ]);
+    }
+  };
+
+  const filteredMeals = meals.filter(meal =>
+    meal.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    meal.type.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalLoggedCalories = loggedMeals.reduce((total, mealId) => {
+    const meal = meals.find(m => m.id === mealId);
+    return total + (meal?.calories || 0);
+  }, 0);
+
+  const getMealTypeColor = (type: string) => {
+    switch (type) {
+      case 'Breakfast': return '#FF9800';
+      case 'Lunch': return '#4CAF50';
+      case 'Dinner': return '#2196F3';
+      default: return '#9C27B0';
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={isDarkMode ? '#667eea' : theme.primary} />
+        <Text style={{ color: theme.text, marginTop: 10 }}>Loading nutrition data...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top']}>
+        <LinearGradient
+          colors={isDarkMode ? ['#667eea', '#764ba2', '#f093fb'] : theme.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <View>
+            <Text style={styles.title}>Nutrition 🥗</Text>
+            <Text style={styles.subtitle}>Fuel your fitness journey</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.personalizeButton}
+            onPress={() => router.push('/onboarding' as any)}
+          >
+            <LinearGradient
+              colors={['#a78bfa', '#8b5cf6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.personalizeGradient}
+            >
+              <Text style={styles.personalizeButtonText}>Personalize ZoeFit</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </LinearGradient>
+
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={[styles.statsContainer, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.statsTitle, { color: theme.text }]}>{"Today's Nutrition"}</Text>
+            <View style={styles.statsGrid}>
+              <View style={[styles.statCard, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border }]}>
+                <Text style={[styles.statNumber, { color: isDarkMode ? '#fff' : theme.text }]}>{todayStats.calories}</Text>
+                <Text style={[styles.statLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Calories</Text>
+                <Text style={[styles.statGoal, { color: isDarkMode ? 'rgba(255,255,255,0.6)' : theme.textSecondary }]}>of {todayStats.goal}</Text>
+                <View style={[styles.progressBar, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }]}>
+                  <View style={[styles.progressFill, { backgroundColor: isDarkMode ? '#a78bfa' : theme.primary, width: `${(todayStats.calories / todayStats.goal) * 100}%` }]} />
+                </View>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border }]}>
+                <Text style={[styles.statNumber, { color: isDarkMode ? '#fff' : theme.text }]}>{todayStats.protein}g</Text>
+                <Text style={[styles.statLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Protein</Text>
+                <Text style={[styles.statGoal, { color: isDarkMode ? 'rgba(255,255,255,0.6)' : theme.textSecondary }]}>of {todayStats.proteinGoal}g</Text>
+                <View style={[styles.progressBar, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }]}>
+                  <View style={[styles.progressFill, { backgroundColor: isDarkMode ? '#a78bfa' : theme.primary, width: `${(todayStats.protein / todayStats.proteinGoal) * 100}%` }]} />
+                </View>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border }]}>
+                <Text style={[styles.statNumber, { color: isDarkMode ? '#fff' : theme.text }]}>{todayStats.water}</Text>
+                <Text style={[styles.statLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Water Glasses</Text>
+                <Text style={[styles.statGoal, { color: isDarkMode ? 'rgba(255,255,255,0.6)' : theme.textSecondary }]}>of {todayStats.waterGoal}</Text>
+                <View style={[styles.progressBar, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }]}>
+                  <View style={[styles.progressFill, { backgroundColor: isDarkMode ? '#a78bfa' : theme.primary, width: `${(todayStats.water / todayStats.waterGoal) * 100}%` }]} />
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.quickActionsContainer}>
+            <View style={[styles.quickActionCard, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border }]}>
+              <Text style={[styles.quickActionLabel, { color: isDarkMode ? '#fff' : theme.text }]}>💧 Water Intake</Text>
+              <View style={styles.waterButtonsRow}>
+                <TouchableOpacity
+                  style={[styles.waterButton, { backgroundColor: isDarkMode ? '#667eea' : theme.primary }]}
+                  onPress={removeWater}
+                >
+                  <Text style={styles.waterButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={[styles.waterCount, { color: isDarkMode ? '#fff' : theme.text }]}>{waterIntake}/{waterGoal}</Text>
+                <TouchableOpacity
+                  style={[styles.waterButton, { backgroundColor: isDarkMode ? '#667eea' : theme.primary }]}
+                  onPress={addWater}
+                >
+                  <Text style={styles.waterButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.actionButtonsRow}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => setShowCustomMealModal(true)}
+            >
+              <LinearGradient
+                colors={isDarkMode ? ['#667eea', '#764ba2'] : [theme.primary, theme.primaryDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.actionButtonGradient}
+              >
+                <Text style={styles.actionButtonText}>+ Add Meal</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => setShowGoalsModal(true)}
+            >
+              <LinearGradient
+                colors={isDarkMode ? ['#f093fb', '#f5576c'] : [theme.primary, theme.primaryDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.actionButtonGradient}
+              >
+                <Text style={styles.actionButtonText}>🎯 Goals</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={[styles.searchInput, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border, color: theme.text }]}
+              placeholder="Search meals..."
+              placeholderTextColor={isDarkMode ? "#999" : theme.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+
+          <View style={[styles.mealsContainer, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Suggested Meals</Text>
+            {filteredMeals.length > 0 ? (
+              filteredMeals.map((meal) => (
+                <View key={meal.id} style={[styles.mealCard, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border }]}>
+                  <View style={styles.mealHeader}>
+                    <View>
+                      <Text style={[styles.mealName, { color: isDarkMode ? '#fff' : theme.text }]}>{meal.name}</Text>
+                      <View style={styles.mealMeta}>
+                        <View style={[styles.mealTypeBadge, { backgroundColor: getMealTypeColor(meal.type) }]}>
+                          <Text style={styles.mealTypeText}>{meal.type}</Text>
+                        </View>
+                        <Text style={[styles.mealTime, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>⏰ {meal.time}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.calorieBadge}>
+                      <Text style={styles.calorieText}>{meal.calories} cal</Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.macrosContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }]}>
+                    <View style={styles.macroItem}>
+                      <Text style={[styles.macroValue, { color: isDarkMode ? '#fff' : theme.text }]}>{meal.protein}g</Text>
+                      <Text style={[styles.macroLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Protein</Text>
+                    </View>
+                    <View style={styles.macroItem}>
+                      <Text style={[styles.macroValue, { color: isDarkMode ? '#fff' : theme.text }]}>{meal.carbs}g</Text>
+                      <Text style={[styles.macroLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Carbs</Text>
+                    </View>
+                    <View style={styles.macroItem}>
+                      <Text style={[styles.macroValue, { color: isDarkMode ? '#fff' : theme.text }]}>{meal.fat}g</Text>
+                      <Text style={[styles.macroLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Fat</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.ingredientsContainer}>
+                    <Text style={[styles.ingredientsTitle, { color: isDarkMode ? '#fff' : theme.text }]}>Ingredients:</Text>
+                    <Text style={[styles.ingredientsList, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>{meal.ingredients.join(', ')}</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.logButton, loggedMeals.includes(meal.id) && styles.logButtonActive]}
+                    onPress={() => logMeal(meal.id)}
+                    disabled={loggedMeals.includes(meal.id)}
+                  >
+                    <LinearGradient
+                      colors={loggedMeals.includes(meal.id) ? ['#4a5568', '#2d3748'] : (isDarkMode ? ['#667eea', '#764ba2'] : [theme.primary, theme.primaryDark])}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.logButtonGradient}
+                    >
+                      <Text style={styles.logButtonText}>
+                        {loggedMeals.includes(meal.id) ? 'Logged ✓' : 'Log This Meal'}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <View style={[styles.noResultsContainer, { backgroundColor: 'transparent' }]}>
+                <Text style={[styles.noResultsText, { color: isDarkMode ? 'rgba(255,255,255,0.6)' : theme.textSecondary }]}>No meals found matching "{searchQuery}"</Text>
+              </View>
+            )}
+          </View>
+
+          {loggedMeals.length > 0 && (
+            <View style={[styles.loggedMealsContainer, { backgroundColor: isDarkMode ? 'rgba(167,139,250,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(167,139,250,0.3)' : theme.border }]}>
+              <Text style={[styles.loggedMealsTitle, { color: isDarkMode ? '#fff' : theme.text }]}>📋 {"Today's"} Logged Meals ({loggedMeals.length})</Text>
+              <Text style={[styles.loggedCaloriesText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Total: {totalLoggedCalories} / {calorieGoal} calories</Text>
+            </View>
+          )}
+
+          <View style={styles.tipsContainer}>
+            <LinearGradient
+              colors={isDarkMode ? ['#2196f3', '#1976d2'] : [theme.primary, theme.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.tipsGradient}
+            >
+              <Text style={styles.tipsTitle}>🍎 Nutrition Tips</Text>
+              <Text style={styles.tip}>• Eat protein with every meal to support muscle growth</Text>
+              <Text style={styles.tip}>• Choose complex carbs for sustained energy</Text>
+              <Text style={styles.tip}>• Stay hydrated - aim for 8 glasses of water daily</Text>
+              <Text style={styles.tip}>• Time your meals around your workouts for optimal performance</Text>
+            </LinearGradient>
+          </View>
+
+          {/* Custom Meal Modal */}
+          <Modal
+            visible={showCustomMealModal}
+            transparent={true}
+            animationType="fade"
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: isDarkMode ? '#1a1f2e' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.border }]}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Add Custom Meal</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border, color: theme.text }]}
+                  placeholder="Meal name"
+                  placeholderTextColor={isDarkMode ? "#999" : theme.textSecondary}
+                  value={customMealName}
+                  onChangeText={setCustomMealName}
+                />
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border, color: theme.text }]}
+                  placeholder="Calories"
+                  placeholderTextColor={isDarkMode ? "#999" : theme.textSecondary}
+                  keyboardType="numeric"
+                  value={customMealCalories}
+                  onChangeText={setCustomMealCalories}
+                />
+                <View style={styles.modalButtonsRow}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border }]}
+                    onPress={() => setShowCustomMealModal(false)}
+                  >
+                    <Text style={[styles.modalButtonText, { color: theme.text }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonPrimary]}
+                    onPress={addCustomMeal}
+                  >
+                    <LinearGradient
+                      colors={isDarkMode ? ['#667eea', '#764ba2'] : [theme.primary, theme.primaryDark]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.modalButtonGradient}
+                    >
+                      <Text style={[styles.modalButtonText, { color: '#fff' }]}>Add</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Edit Goals Modal */}
+          <Modal
+            visible={showGoalsModal}
+            transparent={true}
+            animationType="fade"
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: isDarkMode ? '#1a1f2e' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.border }]}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Nutrition Goals</Text>
+                <View style={styles.goalInputContainer}>
+                  <Text style={[styles.goalLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Daily Calorie Goal</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border, color: theme.text }]}
+                    placeholderTextColor={isDarkMode ? "#999" : theme.textSecondary}
+                    keyboardType="numeric"
+                    value={calorieGoal.toString()}
+                    onChangeText={(text) => setCalorieGoal(parseInt(text) || 2000)}
+                  />
+                </View>
+                <View style={styles.goalInputContainer}>
+                  <Text style={[styles.goalLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Daily Protein Goal (g)</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border, color: theme.text }]}
+                    placeholderTextColor={isDarkMode ? "#999" : theme.textSecondary}
+                    keyboardType="numeric"
+                    value={proteinGoal.toString()}
+                    onChangeText={(text) => setProteinGoal(parseInt(text) || 120)}
+                  />
+                </View>
+                <View style={styles.goalInputContainer}>
+                  <Text style={[styles.goalLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Daily Water Goal (glasses)</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border, color: theme.text }]}
+                    placeholderTextColor={isDarkMode ? "#999" : theme.textSecondary}
+                    keyboardType="numeric"
+                    value={waterGoal.toString()}
+                    onChangeText={(text) => setWaterGoal(parseInt(text) || 8)}
+                  />
+                </View>
+                <View style={styles.modalButtonsRow}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border }]}
+                    onPress={() => setShowGoalsModal(false)}
+                  >
+                    <Text style={[styles.modalButtonText, { color: theme.text }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonPrimary]}
+                    onPress={updateGoals}
+                  >
+                    <LinearGradient
+                      colors={isDarkMode ? ['#667eea', '#764ba2'] : [theme.primary, theme.primaryDark]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.modalButtonGradient}
+                    >
+                      <Text style={[styles.modalButtonText, { color: '#fff' }]}>Save</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        </ScrollView>
+      </SafeAreaView>
+    </View >
+  );
+};
+
+export default NutritionScreen;

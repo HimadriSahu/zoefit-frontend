@@ -13,10 +13,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authService } from '../services/auth';
+import { useTheme } from './screens/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 const SignupScreen = () => {
+  const { theme } = useTheme();
   // Normalize different error shapes coming from ApiService
   const getPayloadFromError = (err: any) => {
     if (!err) return {};
@@ -59,10 +61,10 @@ const SignupScreen = () => {
     }
 
     setLoading(true);
-    
+
     try {
       const _response = await authService.register(username.trim(), email.trim(), password);
-      
+
       Alert.alert(
         '🎉 Account Created!',
         'Welcome to ZoeFit! Your fitness journey starts now. Complete a few quick questions to personalize Nutrio, then you\'re ready to go!',
@@ -106,7 +108,7 @@ const SignupScreen = () => {
       } else if (payload?.error) {
         errorMessage = String(payload.error);
       }
-      
+
       Alert.alert(
         'Registration Failed',
         errorMessage,
@@ -128,67 +130,67 @@ const SignupScreen = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <SafeAreaView style={{ flex: 1 }}>
-        <LinearGradient 
-          colors={['#667eea', '#764ba2', '#f093fb']} 
+        <LinearGradient
+          colors={theme.headerGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
-            <Text style={styles.logo}>Zoefit</Text>
-            <Text style={styles.tagline}>Begin Your Fitness Transformation</Text>
+            <Text style={[styles.logo, { color: theme.text }]}>Zoefit</Text>
+            <Text style={[styles.tagline, { color: theme.textSecondary }]}>Begin Your Fitness Transformation</Text>
           </View>
         </LinearGradient>
-        
+
         <View style={styles.container}>
-          <View style={styles.cardGlass}>
-            <Text style={styles.title}>Join ZoeFit</Text>
-            <Text style={styles.subtitle}>Start your journey to a healthier you</Text>
+          <View style={[styles.cardGlass, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+            <Text style={[styles.title, { color: theme.text }]}>Join ZoeFit</Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Start your journey to a healthier you</Text>
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.settingRowBackground, borderColor: theme.border, color: theme.text }]}
               placeholder="Username"
-              placeholderTextColor="rgba(255,255,255,0.6)"
+              placeholderTextColor={theme.textSecondary}
               value={username}
               onChangeText={setUsername}
             />
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.settingRowBackground, borderColor: theme.border, color: theme.text }]}
               placeholder="Email"
               keyboardType="email-address"
-              placeholderTextColor="rgba(255,255,255,0.6)"
+              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={setEmail}
             />
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.settingRowBackground, borderColor: theme.border, color: theme.text }]}
               placeholder="Password"
-              placeholderTextColor="rgba(255,255,255,0.6)"
+              placeholderTextColor={theme.textSecondary}
               secureTextEntry
               value={password}
               onChangeText={setPassword}
             />
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.settingRowBackground, borderColor: theme.border, color: theme.text }]}
               placeholder="Confirm Password"
-              placeholderTextColor="rgba(255,255,255,0.6)"
+              placeholderTextColor={theme.textSecondary}
               secureTextEntry
               value={confirmPassword}
               onChangeText={setConfirmPassword}
             />
 
-            <TouchableOpacity 
-              style={[styles.button, loading && styles.buttonDisabled]} 
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleSignup}
               disabled={loading}
             >
-              <LinearGradient 
-                colors={loading ? ['#4a5568', '#2d3748'] : ['#667eea', '#764ba2']} 
+              <LinearGradient
+                colors={loading ? ['#4a5568', '#2d3748'] : [theme.primary, theme.primaryDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.buttonGradient}
@@ -201,18 +203,18 @@ const SignupScreen = () => {
               </LinearGradient>
             </TouchableOpacity>
 
-            <Text style={styles.footerText}>
+            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
               Already have an account?{' '}
-              <Text 
-                style={styles.linkText} 
+              <Text
+                style={[styles.linkText, { color: theme.primary }]}
                 onPress={() => router.push('/LoginScreen')}
               >
                 Continue Your Journey
               </Text>
             </Text>
-            
-            <View style={styles.motivationCard}>
-              <Text style={styles.motivationalText}>
+
+            <View style={[styles.motivationCard, { backgroundColor: theme.primary + '20', borderColor: theme.primary + '40' }]}>
+              <Text style={[styles.motivationalText, { color: theme.primary }]}>
                 🏃‍♂️ Your future self will thank you!
               </Text>
             </View>
@@ -228,18 +230,18 @@ export default SignupScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 10,
+    paddingTop: 5,
   },
   headerGradient: {
-    paddingTop: 40,
-    paddingBottom: 60,
+    paddingTop: 30,
+    paddingBottom: 40,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    shadowColor: '#667eea',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 10,
   },
@@ -247,60 +249,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    fontSize: 36,
+    fontSize: 42,
     fontWeight: 'bold',
-    color: '#fff',
     letterSpacing: 2,
-    textShadowColor: '#764ba2',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   tagline: {
     fontSize: 16,
-    color: '#e0e7ff',
     fontWeight: '500',
     textAlign: 'center',
   },
   cardGlass: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
     borderRadius: 24,
-    padding: 30,
-    marginTop: -30,
-    shadowColor: '#667eea',
+    padding: 20,
+    marginTop: 20,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     marginBottom: 25,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 14,
     fontSize: 16,
-    color: '#fff',
-    shadowColor: '#667eea',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -308,9 +297,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 10,
     marginBottom: 20,
-    shadowColor: '#667eea',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 6,
   },
@@ -328,33 +317,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-    textShadowColor: '#764ba2',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
   },
   footerText: {
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
     marginBottom: 20,
   },
   linkText: {
-    color: '#a78bfa',
     fontWeight: 'bold',
     textDecorationLine: 'underline',
   },
   motivationCard: {
-    backgroundColor: 'rgba(167,139,250,0.1)',
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.2)',
+    width: '100%',
   },
   motivationalText: {
-    color: '#a78bfa',
     fontSize: 14,
     fontWeight: '600',
     fontStyle: 'italic',
+    textAlign: 'center',
+    flexWrap: 'wrap',
   },
 });

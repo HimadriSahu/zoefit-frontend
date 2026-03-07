@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,22 @@ import {
   Image,
   ActionSheetIOS,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useOnboarding, Gender, NutrioGoal } from './OnboardingContext';
+import { useTheme } from './ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
+import { aiService } from '../../services/ai';
+import { authService } from '../../services/auth';
+import { apiService, UserProfileData, HealthMetricsData } from '../../services/api';
 
 const PersonalInfoScreen = () => {
   const router = useRouter();
-  const { data, setGender, setBirthday, setHeightCm, setWeightKg, setGoal, setBreakfastTime, setDinnerTime } =
+  const { theme } = useTheme();
+  const { data, setGender, setBirthday, setHeightCm, setWeightKg, setGoal, setBreakfastTime, setDinnerTime, setPhoneNumber, setBio, setLocation, setTargetWeight } =
     useOnboarding();
 
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -29,9 +36,129 @@ const PersonalInfoScreen = () => {
   const [modalType, setModalType] = useState<'gender' | 'goal' | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [healthMetricsLoaded, setHealthMetricsLoaded] = useState(false);
 
   const genderOptions: Gender[] = ['male', 'female', 'other'];
   const goalOptions: NutrioGoal[] = ['lose_weight', 'maintain', 'gain_muscle', 'eat_healthier'];
+
+  // Shared goal mapping for backend API
+  const goalMap: { [key: string]: NutrioGoal } = {
+    'weight_loss': 'lose_weight',
+    'maintenance': 'maintain',
+    'muscle_gain': 'gain_muscle',
+    'endurance': 'eat_healthier',
+    'strength': 'gain_muscle'
+  };
+
+  // Reverse goal mapping for frontend to backend
+  const reverseGoalMap: { [key: string]: 'weight_loss' | 'maintenance' | 'muscle_gain' | 'endurance' | 'strength' } = {
+    'lose_weight': 'weight_loss',
+    'maintain': 'maintenance',
+    'gain_muscle': 'muscle_gain',
+    'eat_healthier': 'maintenance'
+  };
+
+  // Load existing health metrics on component mount
+  useEffect(() => {
+    loadHealthMetrics();
+  }, []);
+
+  const loadHealthMetrics = async () => {
+    try {
+      setIsLoading(true);
+
+      // Check if user is authenticated first
+      const isAuth = await authService.isAuthenticated();
+      if (!isAuth) {
+        console.log('⚠️ User not authenticated, skipping health metrics load');
+        setHealthMetricsLoaded(true);
+        return;
+      }
+
+      const response = await aiService.getHealthMetrics();
+
+      // Update local state with backend data
+      if (response.metrics.height) setHeightCm(response.metrics.height);
+      if (response.metrics.weight) setWeightKg(response.metrics.weight);
+
+      if (response.metrics.fitness_goal && goalMap[response.metrics.fitness_goal]) {
+        setGoal(goalMap[response.metrics.fitness_goal]);
+      }
+
+      setHealthMetricsLoaded(true);
+      console.log('✅ Health metrics loaded successfully');
+    } catch (error) {
+      console.warn('⚠️ Could not load health metrics:', error);
+      // Don't show error to user on initial load, just continue with local data
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveUserProfileToBackend = async () => {
+    try {
+      setIsLoading(true);
+
+      const profileData: UserProfileData = {
+        phone_number: data.phoneNumber || undefined,
+        date_of_birth: data.birthday || undefined,
+        bio: data.bio || undefined,
+        location: data.location || undefined,
+        height: data.heightCm || undefined,
+        weight: data.weightKg || undefined,
+        fitness_goal: data.goal ? reverseGoalMap[data.goal] : undefined,
+      };
+
+      // Check if user is authenticated first
+      const isAuth = await authService.isAuthenticated();
+      if (!isAuth) {
+        console.log('⚠️ User not authenticated, skipping profile save');
+        return;
+      }
+
+      await apiService.createOrUpdateUserProfile(profileData);
+      console.log('✅ User profile saved to backend');
+    } catch (error) {
+      console.error('❌ Failed to save user profile:', error);
+      Alert.alert('Error', 'Failed to save profile information. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveHealthMetricsToBackend = async () => {
+    try {
+      setIsLoading(true);
+
+      // Map frontend goals to backend format
+      const healthData: HealthMetricsData = {
+        height: data.heightCm || undefined,
+        weight: data.weightKg || undefined,
+        fitness_goal: data.goal ? reverseGoalMap[data.goal] : 'maintenance',
+        activity_level: data.activityLevel || 'moderate',
+        target_weight: data.targetWeight || undefined,
+        dietary_preferences: data.dietaryPreferences || {},
+        medical_conditions: data.medicalConditions || [],
+        allergies: data.allergies || [],
+      };
+
+      // Check if user is authenticated first
+      const isAuth = await authService.isAuthenticated();
+      if (!isAuth) {
+        Alert.alert('Authentication Required', 'Please log in to save your health metrics.');
+        return;
+      }
+
+      await aiService.updateHealthMetrics(healthData);
+      console.log('✅ Health metrics saved to backend');
+    } catch (error) {
+      console.error('❌ Failed to save health metrics:', error);
+      Alert.alert('Error', 'Failed to save health metrics. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const requestPermissions = async () => {
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
@@ -55,12 +182,35 @@ const PersonalInfoScreen = () => {
       });
 
       if (!result.canceled) {
-        setProfileImage(result.assets[0].uri);
-        setImagePickerVisible(false);
-        Alert.alert('Success', 'Profile picture updated successfully');
+        setIsLoading(true);
+        const imageUri = result.assets[0].uri;
+
+        try {
+          // Upload to backend
+          const formData = new FormData();
+          formData.append('profile_picture', {
+            uri: imageUri,
+            type: 'image/jpeg',
+            name: 'profile_picture.jpg',
+          } as any);
+
+          await authService.uploadProfilePicture(formData);
+          setProfileImage(imageUri);
+          setImagePickerVisible(false);
+          Alert.alert('Success', 'Profile picture updated successfully');
+        } catch (uploadError) {
+          console.error('Upload error:', uploadError);
+          // Still set local image even if upload fails
+          setProfileImage(imageUri);
+          setImagePickerVisible(false);
+          Alert.alert('Partial Success', 'Profile picture set locally. Upload will retry when connection is available.');
+        }
       }
     } catch (error) {
+      console.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -79,12 +229,35 @@ const PersonalInfoScreen = () => {
       });
 
       if (!result.canceled) {
-        setProfileImage(result.assets[0].uri);
-        setImagePickerVisible(false);
-        Alert.alert('Success', 'Profile picture updated successfully');
+        setIsLoading(true);
+        const imageUri = result.assets[0].uri;
+
+        try {
+          // Upload to backend
+          const formData = new FormData();
+          formData.append('profile_picture', {
+            uri: imageUri,
+            type: 'image/jpeg',
+            name: 'profile_picture.jpg',
+          } as any);
+
+          await authService.uploadProfilePicture(formData);
+          setProfileImage(imageUri);
+          setImagePickerVisible(false);
+          Alert.alert('Success', 'Profile picture updated successfully');
+        } catch (uploadError) {
+          console.error('Upload error:', uploadError);
+          // Still set local image even if upload fails
+          setProfileImage(imageUri);
+          setImagePickerVisible(false);
+          Alert.alert('Partial Success', 'Profile picture set locally. Upload will retry when connection is available.');
+        }
       }
     } catch (error) {
+      console.error('Camera error:', error);
       Alert.alert('Error', 'Failed to take photo');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -114,7 +287,7 @@ const PersonalInfoScreen = () => {
     setTempValue(value?.toString() || '');
   };
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!tempValue) {
       Alert.alert('Error', 'Field cannot be empty');
       return;
@@ -141,8 +314,30 @@ const PersonalInfoScreen = () => {
         case 'dinnerTime':
           setDinnerTime(tempValue);
           break;
+        case 'phoneNumber':
+          setPhoneNumber(tempValue);
+          break;
+        case 'bio':
+          setBio(tempValue);
+          break;
+        case 'location':
+          setLocation(tempValue);
+          break;
+        case 'targetWeight':
+          const targetWt = parseFloat(tempValue);
+          if (isNaN(targetWt) || targetWt <= 0) throw new Error('Invalid target weight');
+          setTargetWeight(targetWt);
+          break;
       }
       setEditingField(null);
+
+      // Save to backend after successful local update
+      if (editingField === 'phoneNumber' || editingField === 'bio' || editingField === 'location') {
+        await saveUserProfileToBackend();
+      } else {
+        await saveHealthMetricsToBackend();
+      }
+
       Alert.alert('Success', 'Information updated successfully');
     } catch (error) {
       Alert.alert('Error', 'Invalid input. Please try again.');
@@ -154,9 +349,12 @@ const PersonalInfoScreen = () => {
     setModalVisible(false);
   };
 
-  const handleGoalSelect = (goal: NutrioGoal) => {
+  const handleGoalSelect = async (goal: NutrioGoal) => {
     setGoal(goal);
     setModalVisible(false);
+
+    // Save to backend after goal change
+    await saveHealthMetricsToBackend();
   };
 
   const formatLabel = (key: string): string => {
@@ -168,6 +366,10 @@ const PersonalInfoScreen = () => {
       goal: 'Nutrition Goal',
       breakfastTime: 'Breakfast Time',
       dinnerTime: 'Dinner Time',
+      phoneNumber: 'Phone Number',
+      bio: 'Bio',
+      location: 'Location',
+      targetWeight: 'Target Weight (kg)',
     };
     return labels[key] || key;
   };
@@ -180,10 +382,10 @@ const PersonalInfoScreen = () => {
   };
 
   const renderInfoField = (label: string, value: any, onEdit: () => void) => (
-    <TouchableOpacity style={styles.infoField} onPress={onEdit}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+    <TouchableOpacity style={[styles.infoField, { backgroundColor: theme.cardBackground, borderColor: theme.border }]} onPress={onEdit}>
+      <Text style={[styles.fieldLabel, { color: theme.text }]}>{label}</Text>
       <View style={styles.fieldValueContainer}>
-        <Text style={styles.fieldValue}>{value}</Text>
+        <Text style={[styles.fieldValue, { color: theme.textSecondary }]}>{value}</Text>
         <Text style={styles.editIcon}>✏️</Text>
       </View>
     </TouchableOpacity>
@@ -195,25 +397,25 @@ const PersonalInfoScreen = () => {
       animationType="slide"
       transparent={true}
     >
-      <SafeAreaView style={styles.modalContainer}>
-        <View style={styles.modalContent}>
+      <SafeAreaView style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+        <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setEditingField(null)}>
-              <Text style={styles.cancelButton}>Cancel</Text>
+              <Text style={[styles.cancelButton, { color: theme.primary }]}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Edit {editingField}</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Edit {editingField}</Text>
             <TouchableOpacity onPress={handleEditSave}>
-              <Text style={styles.saveButton}>Save</Text>
+              <Text style={[styles.saveButton, { color: theme.primary }]}>Save</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
               value={tempValue}
               onChangeText={setTempValue}
               placeholder={`Enter ${editingField}`}
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.textSecondary}
             />
           </View>
         </View>
@@ -230,10 +432,10 @@ const PersonalInfoScreen = () => {
 
     return (
       <Modal visible={modalVisible && modalType !== null} animationType="slide" transparent={true}>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select {modalType === 'gender' ? 'Gender' : 'Goal'}</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Select {modalType === 'gender' ? 'Gender' : 'Goal'}</Text>
             </View>
 
             <FlatList
@@ -243,15 +445,17 @@ const PersonalInfoScreen = () => {
                 <TouchableOpacity
                   style={[
                     styles.selectionItem,
-                    (modalType === 'gender' ? data.gender === item : data.goal === item) &&
-                      styles.selectedItem,
+                    { backgroundColor: theme.cardBackground, borderColor: theme.border },
+                    (modalType === 'gender' ? data.gender === item : data.goal === item) && { backgroundColor: theme.primary },
                   ]}
                   onPress={() => onSelect(item)}
                 >
-                  <Text style={styles.selectionText}>{formatValue(modalType || '', item)}</Text>
-                  {(modalType === 'gender' ? data.gender === item : data.goal === item) && (
-                    <Text style={styles.checkmark}>✓</Text>
-                  )}
+                  <Text style={[
+                    styles.selectionText,
+                    { color: (modalType === 'gender' ? data.gender === item : data.goal === item) ? '#fff' : theme.text }
+                  ]}>
+                    {formatValue(modalType === 'gender' ? 'gender' : 'goal', item)}
+                  </Text>
                 </TouchableOpacity>
               )}
             />
@@ -277,33 +481,33 @@ const PersonalInfoScreen = () => {
       animationType="slide"
       transparent={true}
     >
-      <SafeAreaView style={styles.modalContainer}>
-        <View style={styles.modalContent}>
+      <SafeAreaView style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+        <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Choose Profile Picture</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Choose Profile Picture</Text>
           </View>
 
-          <TouchableOpacity style={styles.imagePickerOption} onPress={takePhotoWithCamera}>
+          <TouchableOpacity style={[styles.imagePickerOption, { backgroundColor: theme.cardBackground, borderColor: theme.border }]} onPress={takePhotoWithCamera}>
             <Text style={styles.imagePickerIcon}>📷</Text>
             <View style={styles.imagePickerTextContainer}>
-              <Text style={styles.imagePickerTitle}>Take Photo</Text>
-              <Text style={styles.imagePickerSubtitle}>Take a new photo with your camera</Text>
+              <Text style={[styles.imagePickerTitle, { color: theme.text }]}>Take Photo</Text>
+              <Text style={[styles.imagePickerSubtitle, { color: theme.textSecondary }]}>Take a new photo with your camera</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.imagePickerOption} onPress={pickImageFromLibrary}>
+          <TouchableOpacity style={[styles.imagePickerOption, { backgroundColor: theme.cardBackground, borderColor: theme.border }]} onPress={pickImageFromLibrary}>
             <Text style={styles.imagePickerIcon}>🖼️</Text>
             <View style={styles.imagePickerTextContainer}>
-              <Text style={styles.imagePickerTitle}>Choose from Library</Text>
-              <Text style={styles.imagePickerSubtitle}>Select from your photo gallery</Text>
+              <Text style={[styles.imagePickerTitle, { color: theme.text }]}>Choose from Library</Text>
+              <Text style={[styles.imagePickerSubtitle, { color: theme.textSecondary }]}>Select from your photo gallery</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.imagePickerOption, styles.cancelOption]}
+            style={[styles.imagePickerOption, styles.cancelOption, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
             onPress={() => setImagePickerVisible(false)}
           >
-            <Text style={styles.imagePickerTitle}>Cancel</Text>
+            <Text style={[styles.imagePickerTitle, { color: theme.text }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -311,34 +515,39 @@ const PersonalInfoScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <LinearGradient
+        colors={theme.headerGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backButton}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headingTitle}>Personal Information</Text>
         <View style={{ width: 40 }} />
-      </View>
+      </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={[styles.scrollView, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
         <View style={styles.profilePictureSection}>
           <View style={styles.profilePictureContainer}>
             {profileImage ? (
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
             ) : (
-              <View style={styles.profileImagePlaceholder}>
+              <View style={[styles.profileImagePlaceholder, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
                 <Text style={styles.profileImagePlaceholderText}>📷</Text>
               </View>
             )}
-            <TouchableOpacity style={styles.editPhotoButton} onPress={handleImagePickerPress}>
+            <TouchableOpacity style={[styles.editPhotoButton, { backgroundColor: theme.primary }]} onPress={handleImagePickerPress}>
               <Text style={styles.editPhotoIcon}>✏️</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.profilePictureLabel}>Add or change profile picture</Text>
+          <Text style={[styles.profilePictureLabel, { color: theme.textSecondary }]}>Add or change profile picture</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Basic Information</Text>
 
           {renderInfoField(formatLabel('gender'), formatValue('gender', data.gender), () => {
             setModalType('gender');
@@ -365,7 +574,7 @@ const PersonalInfoScreen = () => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Health & Nutrition</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Health & Nutrition</Text>
 
           {renderInfoField(formatLabel('goal'), formatValue('goal', data.goal), () => {
             setModalType('goal');
@@ -382,6 +591,38 @@ const PersonalInfoScreen = () => {
             formatLabel('dinnerTime'),
             data.dinnerTime || 'Not set',
             () => handleEditStart('dinnerTime', data.dinnerTime)
+          )}
+
+          {renderInfoField(
+            formatLabel('phoneNumber'),
+            data.phoneNumber || 'Not set',
+            () => handleEditStart('phoneNumber', data.phoneNumber)
+          )}
+
+          {renderInfoField(
+            formatLabel('location'),
+            data.location || 'Not set',
+            () => handleEditStart('location', data.location)
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>About You</Text>
+
+          {renderInfoField(
+            formatLabel('bio'),
+            data.bio || 'Not set',
+            () => handleEditStart('bio', data.bio)
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Goals</Text>
+
+          {renderInfoField(
+            formatLabel('targetWeight'),
+            data.targetWeight ? `${data.targetWeight} kg` : 'Not set',
+            () => handleEditStart('targetWeight', data.targetWeight)
           )}
         </View>
 
@@ -411,7 +652,7 @@ const PersonalInfoScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -419,19 +660,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
   },
   backButton: {
     fontSize: 16,
-    color: '#2E7D32',
+    color: '#fff',
     fontWeight: '600',
   },
   headingTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: '#047857',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   scrollView: {
     flex: 1,
@@ -444,7 +692,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: '#1f2937',
     marginBottom: 12,
   },
   infoField: {
@@ -474,7 +722,7 @@ const styles = StyleSheet.create({
   },
   fieldValue: {
     fontSize: 16,
-    color: '#333',
+    color: '#1f2937',
     fontWeight: '600',
     flex: 1,
   },
@@ -506,7 +754,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    color: '#1f2937',
   },
   cancelButton: {
     fontSize: 14,
@@ -523,11 +771,11 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#e5e7eb',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#333',
+    color: '#1f2937',
   },
   selectionItem: {
     flexDirection: 'row',
@@ -544,7 +792,7 @@ const styles = StyleSheet.create({
   },
   selectionText: {
     fontSize: 16,
-    color: '#333',
+    color: '#1f2937',
     fontWeight: '500',
   },
   checkmark: {
@@ -573,7 +821,7 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     fontSize: 14,
-    color: '#333',
+    color: '#1f2937',
     lineHeight: 22,
     marginBottom: 12,
   },
@@ -659,7 +907,7 @@ const styles = StyleSheet.create({
   imagePickerTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#1f2937',
     marginBottom: 4,
   },
   imagePickerSubtitle: {

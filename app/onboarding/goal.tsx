@@ -22,7 +22,7 @@ export default function GoalScreen() {
   const { data, setGoal } = useOnboarding();
 
   const handleContinue = () => {
-    if (data.goal) router.push('/onboarding/breakfast-time');
+    if (data.goal) router.push('/onboarding/activity-level');
   };
 
   return (

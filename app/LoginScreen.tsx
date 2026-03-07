@@ -13,10 +13,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authService } from '../services/auth';
+import { useTheme } from './screens/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 const LoginScreen = () => {
+  const { theme } = useTheme();
   // Normalize different error shapes coming from ApiService
   const getPayloadFromError = (err: any) => {
     if (!err) return {};
@@ -50,7 +52,7 @@ const LoginScreen = () => {
     try {
       setLoading(true);
       const response = await authService.forgotPassword(email.trim());
-      
+
       Alert.alert(
         '✅ Password Reset Sent',
         response.message + (response.note ? `\n\n${response.note}` : ''),
@@ -63,9 +65,9 @@ const LoginScreen = () => {
       );
     } catch (error: any) {
       console.error('Forgot password error:', error);
-      
+
       let errorMessage = 'Failed to send password reset email. Please try again.';
-      
+
       if (error.error) {
         errorMessage = error.error;
       } else if (error.detail) {
@@ -73,7 +75,7 @@ const LoginScreen = () => {
       } else if (error.error) {
         errorMessage = error.error;
       }
-      
+
       Alert.alert(
         'Password Reset Failed',
         errorMessage,
@@ -97,23 +99,42 @@ const LoginScreen = () => {
     }
 
     setLoading(true);
-    
+
     try {
       const _response = await authService.login(email.trim(), password);
-      
-      Alert.alert(
-        '🎉 Welcome to ZoeFit!',
-        'Login successful! Ready to crush your fitness goals?',
-        [
-          {
-            text: 'Let\'s Go!',
-            onPress: () => {
-              // Onboarding pages run before home
-              router.replace('/onboarding' as import('expo-router').Href);
+
+      // Check if user has completed onboarding
+      const hasCompletedOnboarding = await authService.hasCompletedOnboarding();
+
+      if (hasCompletedOnboarding) {
+        // User has completed onboarding, go to main app
+        Alert.alert(
+          '🎉 Welcome Back to ZoeFit!',
+          'Login successful! Ready to continue your fitness journey?',
+          [
+            {
+              text: 'Let\'s Go!',
+              onPress: () => {
+                router.replace('/screens/welcomePage' as import('expo-router').Href);
+              },
             },
-          },
-        ]
-      );
+          ]
+        );
+      } else {
+        // New user or user hasn't completed onboarding
+        Alert.alert(
+          '🎉 Welcome to ZoeFit!',
+          'Login successful! Let\'s complete your profile setup to personalize your experience.',
+          [
+            {
+              text: 'Complete Setup',
+              onPress: () => {
+                router.replace('/onboarding' as import('expo-router').Href);
+              },
+            },
+          ]
+        );
+      }
     } catch (error: any) {
       console.error('Login error:', error);
 
@@ -140,7 +161,7 @@ const LoginScreen = () => {
       } else if (payload?.error) {
         errorMessage = String(payload.error);
       }
-      
+
       Alert.alert(
         'Login Failed',
         errorMessage,
@@ -162,57 +183,57 @@ const LoginScreen = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <SafeAreaView style={{ flex: 1 }}>
-        <LinearGradient 
-          colors={['#667eea', '#764ba2', '#f093fb']} 
+        <LinearGradient
+          colors={theme.headerGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
-            <Text style={styles.logo}>Zoefit</Text>
-            <Text style={styles.tagline}>Transform Your Health Journey</Text>
+            <Text style={[styles.logo, { color: theme.text }]}>Zoefit</Text>
+            <Text style={[styles.tagline, { color: theme.textSecondary }]}>Transform Your Health Journey</Text>
           </View>
         </LinearGradient>
-        
+
         <View style={styles.container}>
-          <View style={styles.cardGlass}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Ready to crush your fitness goals?</Text>
+          <View style={[styles.cardGlass, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+            <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Ready to crush your fitness goals?</Text>
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.settingRowBackground, borderColor: theme.border, color: theme.text }]}
               placeholder="Email"
               keyboardType="email-address"
-              placeholderTextColor="rgba(255,255,255,0.6)"
+              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={setEmail}
             />
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.settingRowBackground, borderColor: theme.border, color: theme.text }]}
               placeholder="Password"
-              placeholderTextColor="rgba(255,255,255,0.6)"
+              placeholderTextColor={theme.textSecondary}
               secureTextEntry
               value={password}
               onChangeText={setPassword}
             />
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.forgotPasswordButton}
               onPress={handleForgotPassword}
             >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>Forgot Password?</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.button, loading && styles.buttonDisabled]} 
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={loading}
             >
-              <LinearGradient 
-                colors={loading ? ['#4a5568', '#2d3748'] : ['#667eea', '#764ba2']} 
+              <LinearGradient
+                colors={loading ? ['#4a5568', '#2d3748'] : [theme.primary, theme.primaryDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.buttonGradient}
@@ -225,18 +246,18 @@ const LoginScreen = () => {
               </LinearGradient>
             </TouchableOpacity>
 
-            <Text style={styles.footerText}>
+            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
               {"Don't have an account? "}
-              <Text 
-                style={styles.linkText} 
+              <Text
+                style={[styles.linkText, { color: theme.primary }]}
                 onPress={() => router.push('/SignupScreen')}
               >
                 Start Your Journey
               </Text>
             </Text>
-            
-            <View style={styles.motivationCard}>
-              <Text style={styles.motivationalText}>
+
+            <View style={[styles.motivationCard, { backgroundColor: theme.primary + '20', borderColor: theme.primary + '40' }]}>
+              <Text style={[styles.motivationalText, { color: theme.primary }]}>
                 💪 Every workout counts!
               </Text>
             </View>
@@ -253,7 +274,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 30,
   },
   headerGradient: {
     paddingTop: 40,
@@ -261,9 +282,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    shadowColor: '#667eea',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 10,
   },
@@ -273,58 +294,45 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#fff',
     letterSpacing: 2,
-    textShadowColor: '#764ba2',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
     marginBottom: 8,
   },
   tagline: {
     fontSize: 16,
-    color: '#e0e7ff',
     fontWeight: '500',
     textAlign: 'center',
   },
   cardGlass: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
     borderRadius: 24,
     padding: 30,
-    marginTop: -30,
-    shadowColor: '#667eea',
+    marginTop: 20,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     marginBottom: 25,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     fontSize: 16,
-    color: '#fff',
-    shadowColor: '#667eea',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -332,9 +340,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 10,
     marginBottom: 20,
-    shadowColor: '#667eea',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 6,
   },
@@ -352,18 +360,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-    textShadowColor: '#764ba2',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
   },
   footerText: {
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
     marginBottom: 20,
   },
   linkText: {
-    color: '#a78bfa',
     fontWeight: 'bold',
     textDecorationLine: 'underline',
   },
@@ -372,23 +375,22 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   forgotPasswordText: {
-    color: '#a78bfa',
     fontSize: 14,
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
   motivationCard: {
-    backgroundColor: 'rgba(167,139,250,0.1)',
     borderRadius: 12,
-    padding: 12,
+    padding: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.2)',
+    width: '100%',
   },
   motivationalText: {
-    color: '#a78bfa',
     fontSize: 14,
     fontWeight: '600',
     fontStyle: 'italic',
+    textAlign: 'center',
+    flexWrap: 'wrap',
   },
 });

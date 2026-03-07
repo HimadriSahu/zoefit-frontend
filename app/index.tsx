@@ -1,9 +1,7 @@
 import { Redirect } from 'expo-router';
-import { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator, Dimensions, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authService } from '../services/auth';
+import { useAuth } from '../context/AuthContext';
 import { useOnboarding } from './screens/OnboardingContext';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -37,39 +35,14 @@ const styles = StyleSheet.create({
 });
 
 export default function Index() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { isOnboardingComplete } = useOnboarding();
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      const authenticated = await authService.isAuthenticated();
-      setIsAuthenticated(authenticated);
-      if (authenticated) {
-        const completed = await AsyncStorage.getItem(ONBOARDING_COMPLETED_KEY);
-        setOnboardingCompleted(completed === 'true');
-      } else {
-        setOnboardingCompleted(null);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setIsAuthenticated(false);
-      setOnboardingCompleted(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading || (isAuthenticated && onboardingCompleted === null)) {
+  if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
-        <LinearGradient 
-          colors={['#667eea', '#764ba2', '#f093fb']} 
+        <LinearGradient
+          colors={['#667eea', '#764ba2', '#f093fb']}
           style={styles.loadingContainer}
         >
           <View style={styles.loadingContent}>
@@ -83,15 +56,12 @@ export default function Index() {
   }
 
   if (isAuthenticated) {
-    // Check if user has completed the questionnaire
-    const questionnaireComplete = isOnboardingComplete();
-    
-    // If questionnaire is not complete, redirect to onboarding
-    if (!questionnaireComplete) {
+    // Check if user has completed onboarding
+    if (!isOnboardingComplete) {
       return <Redirect href="/onboarding" />;
     }
-    
-    // If questionnaire is complete, redirect to welcome page
+
+    // If onboarding is complete, redirect to welcome page
     return <Redirect href="/screens/welcomePage" />;
   }
 

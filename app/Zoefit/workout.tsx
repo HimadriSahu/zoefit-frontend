@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Dimensions
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../screens/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 const WorkoutScreen = () => {
+  const { theme, isDarkMode } = useTheme();
   const [selectedWorkout, setSelectedWorkout] = useState<string | null>(null);
   const router = useRouter();
 
@@ -51,10 +53,10 @@ const WorkoutScreen = () => {
       'Workout Started!',
       'Great job taking the first step! Track your progress as you go.',
       [
-        { 
-          text: 'Let\'s Go!', 
+        {
+          text: 'Let\'s Go!',
           onPress: () => router.push('/StartWorkout'),
-          style: 'default' 
+          style: 'default'
         }
       ]
     );
@@ -70,10 +72,10 @@ const WorkoutScreen = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0f1c' }}>
-      <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top']}>
         <LinearGradient
-          colors={['#667eea', '#764ba2', '#f093fb']}
+          colors={isDarkMode ? ['#667eea', '#764ba2', '#f093fb'] : theme.headerGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
@@ -83,10 +85,10 @@ const WorkoutScreen = () => {
         </LinearGradient>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.quickStartContainer}>
+          <View style={[styles.quickStartContainer, { backgroundColor: theme.cardBackground }]}>
             <TouchableOpacity style={styles.quickStartButton}>
               <LinearGradient
-                colors={['#ff6b6b', '#ee5a24']}
+                colors={isDarkMode ? ['#667eea', '#764ba2'] : [theme.primary, theme.primaryDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.quickStartGradient}
@@ -97,13 +99,13 @@ const WorkoutScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.workoutsContainer}>
-            <Text style={styles.sectionTitle}>Available Workouts</Text>
+          <View style={[styles.workoutsContainer, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Available Workouts</Text>
             {workouts.map((workout) => (
-              <View key={workout.id} style={styles.workoutCard}>
+              <View key={workout.id} style={[styles.workoutCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
                 <View style={styles.workoutHeader}>
                   <View>
-                    <Text style={styles.workoutName}>{workout.name}</Text>
+                    <Text style={[styles.workoutName, { color: theme.text }]}>{workout.name}</Text>
                     <View style={styles.workoutMeta}>
                       <Text style={styles.workoutMetaText}>⏱️ {workout.duration}</Text>
                       <Text style={styles.workoutMetaText}>🔥 {workout.calories} cal</Text>
@@ -121,13 +123,13 @@ const WorkoutScreen = () => {
                   ))}
                 </View>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.startButton, selectedWorkout === workout.id && styles.startButtonActive]}
                   onPress={() => startWorkout(workout.id)}
                   disabled={selectedWorkout === workout.id}
                 >
                   <LinearGradient
-                    colors={selectedWorkout === workout.id ? ['#4a5568', '#2d3748'] : ['#667eea', '#764ba2']}
+                    colors={selectedWorkout === workout.id ? ['#10b981', '#059669'] : ['#10b981', '#059669']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.startButtonGradient}
@@ -143,7 +145,7 @@ const WorkoutScreen = () => {
 
           <View style={styles.tipsContainer}>
             <LinearGradient
-              colors={['#2196f3', '#1976d2']}
+              colors={isDarkMode ? ['#2196f3', '#1976d2'] : [theme.primary, theme.primaryDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.tipsGradient}
@@ -224,21 +226,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1f2937',
     marginBottom: 15,
     letterSpacing: 0.5,
   },
   workoutCard: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
+    backgroundColor: '#fff',
     borderRadius: 18,
     padding: 20,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    shadowColor: '#667eea',
+    borderColor: '#e5e7eb',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 6,
   },
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
   workoutName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1f2937',
     marginBottom: 5,
   },
   workoutMeta: {
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
   },
   workoutMetaText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    color: '#6b7280',
     marginRight: 15,
   },
   difficultyBadge: {
@@ -278,19 +279,19 @@ const styles = StyleSheet.create({
   exercisesTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1f2937',
     marginBottom: 8,
   },
   exerciseItem: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
+    color: '#6b7280',
     marginBottom: 3,
   },
   startButton: {
     borderRadius: 12,
-    shadowColor: '#667eea',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 6,
   },

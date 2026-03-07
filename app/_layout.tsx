@@ -1,24 +1,29 @@
 import { Stack } from "expo-router";
 import { OnboardingProvider } from './screens/OnboardingContext';
+import { ThemeProvider, useTheme } from './screens/ThemeContext';
+import { AuthProvider } from '../context/AuthContext';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export default function RootLayout() {
+function ThemedStack() {
+  const { theme } = useTheme();
+
   return (
-    <OnboardingProvider>
-      <StatusBar 
-        style="light" 
-        backgroundColor="#0a0f1c" 
+    <>
+      <StatusBar
+        style="light"
+        backgroundColor={theme.background}
         translucent={false}
       />
       <Stack
         screenOptions={{
+          headerShown: false,
           headerStyle: {
             backgroundColor: 'transparent',
           },
           headerBackground: () => (
             <LinearGradient
-              colors={['#667eea', '#764ba2', '#f093fb']}
+              colors={theme.headerGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{ flex: 1 }}
@@ -30,10 +35,22 @@ export default function RootLayout() {
             fontSize: 18,
           },
           contentStyle: {
-            backgroundColor: '#0a0f1c',
+            backgroundColor: theme.background,
           },
         }}
       />
-    </OnboardingProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <OnboardingProvider>
+        <ThemeProvider>
+          <ThemedStack />
+        </ThemeProvider>
+      </OnboardingProvider>
+    </AuthProvider>
   );
 }

@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -9,8 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const ONBOARDING_COMPLETED_KEY = 'nutrio_onboarding_completed';
+import { authService } from '../../services/auth';
 
 export default function PersonalizingScreen() {
   const router = useRouter();
@@ -41,8 +39,8 @@ export default function PersonalizingScreen() {
   }, [steps.length]);
 
   const handleFinish = async () => {
-    await AsyncStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true');
-    router.replace('/Zoefit/welcomePage');
+    await authService.setOnboardingCompleted(true);
+    router.replace('/screens/welcomePage');
   };
 
   return (

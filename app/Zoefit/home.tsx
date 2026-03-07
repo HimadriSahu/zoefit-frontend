@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
 	View,
 	Text,
@@ -8,86 +8,303 @@ import {
 	Dimensions,
 	TouchableOpacity,
 	Animated,
+	ActivityIndicator,
+	RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../screens/ThemeContext';
+import { authService } from '../../services/auth';
+import { apiService, DailyStats } from '../../services/api';
 
 const screenWidth = Dimensions.get("window").width;
 
 const HomeScreen = () => {
-  const router = useRouter();
-  const [isAiActive, setIsAiActive] = useState(false);
+	const router = useRouter();
+	const { theme, isDarkMode } = useTheme();
+	const [isAiActive, setIsAiActive] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
+	const [refreshing, setRefreshing] = useState(false);
+	const [todayStats, setTodayStats] = useState({
+		calories: 0,
+		steps: 0,
+		minutes: 0
+	});
+	const [todayWorkoutSessions, setTodayWorkoutSessions] = useState<any[]>([]);
+	const [aiInsight, setAiInsight] = useState('');
 
-  const handleAiPress = () => {
-    setIsAiActive(!isAiActive);
-    setTimeout(() => {
-      setIsAiActive(false);
-    }, 2000);
-  };
+	// Fetch daily stats from backend
+	const fetchDailyStats = useCallback(async () => {
+		try {
+			const stats: DailyStats = await apiService.getDailyStats();
+			setTodayStats({
+				calories: stats.calories_burned,
+				steps: stats.estimated_steps,
+				minutes: stats.workout_minutes
+			});
+			console.log('📊 Daily stats updated:', {
+				calories: stats.calories_burned,
+				steps: stats.estimated_steps,
+				minutes: stats.workout_minutes,
+				lastUpdated: stats.last_updated
+			});
+		} catch (error) {
+			console.error('❌ Failed to fetch daily stats:', error);
+			// Keep default values on error (resets to 0)
+			setTodayStats({
+				calories: 0,
+				steps: 0,
+				minutes: 0
+			});
+		}
+	}, []);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#eafcf7' }}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-          {/* HEADER */}
-          <LinearGradient colors={["#43e97b", "#38f9d7"]} style={styles.header}>
-            <View style={styles.headerTop}>
-              <Text style={styles.logo}>Zoefit</Text>
-              <TouchableOpacity onPress={handleAiPress} style={styles.aiButton}>
-                <Text style={styles.aiIcon}>🤖</Text>
-                {isAiActive && <Text style={styles.aiStatus}>Active</Text>}
-              </TouchableOpacity>
-            </View>
-            <View style={styles.welcomeCardGlass}>
-              <Text style={styles.welcome}>Welcome Back 👋</Text>
-              <Text style={styles.sub}>Ready to crush your fitness goals today?</Text>
-            </View>
-          </LinearGradient>
+	// Fetch today's workout sessions
+	const fetchTodayWorkoutSessions = useCallback(async () => {
+		try {
+			const today = new Date().toISOString().split('T')[0];
+			const sessions = await apiService.getWorkoutSessions(today, today);
+			setTodayWorkoutSessions(sessions.results || []);
+			console.log('🏋️ Today\'s workout sessions loaded:', sessions.results?.length || 0);
+		} catch (error) {
+			console.error('❌ Failed to fetch workout sessions:', error);
+			setTodayWorkoutSessions([]);
+		}
+	}, []);
 
-          {/* OVERVIEW RINGS */}
-          <Text style={styles.sectionTitle}>Today's Overview</Text>
-          <View style={styles.ringRow}>
-            <Ring label="Calories" value="650" fill={70} color="#00e0ff" />
-            <Ring label="Steps" value="4,000" fill={50} color="#43e97b" />
-            <Ring label="Minutes" value="30" fill={30} color="#ff9a9e" />
-          </View>
+	// Combined data loading function
+	const loadAllData = useCallback(async () => {
+		setIsLoading(true);
+		try {
+			// Load both stats and sessions in parallel for better performance
+			await Promise.all([
+				fetchDailyStats().catch(err => {
+					console.warn('⚠️ Failed to load daily stats:', err);
+					// Don't throw, just continue
+				}),
+				fetchTodayWorkoutSessions().catch(err => {
+					console.warn('⚠️ Failed to load workout sessions:', err);
+					// Don't throw, just continue
+				})
+			]);
+		} catch (error) {
+			console.error('❌ Failed to load data:', error);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [fetchDailyStats, fetchTodayWorkoutSessions]);
 
-          {/* AI COACH */}
-          <View style={styles.aiCardGlass}>
-            <Text style={styles.aiTitle}>🤖 Smart Fitness Coach</Text>
-            <Text style={styles.aiText}>Based on your progress, try a 20-min HIIT workout today.</Text>
-          </View>
+	// Initial load and refresh
+	useEffect(() => {
+		loadAllData();
+	}, [loadAllData]);
 
-          {/* QUICK ACTIONS */}
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.grid}>
-            <ActionCard icon="🏋️" title="Workout" onPress={() => router.push('/Zoefit/workout')} />
-            <ActionCard icon="📊" title="Progress" onPress={() => router.push('/screens/progress')} />
-            <ActionCard icon="🥗" title="Nutrition" />
-            <ActionCard icon="😴" title="Sleep" />
-          </View>
+	// Listen for workout completion events and handle 24-hour reset
+	useEffect(() => {
+		const checkForWorkoutCompletion = async () => {
+			try {
+				const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+				const workoutCompleted = await AsyncStorage.getItem('workout_completed');
 
-          {/* BADGES */}
-          <Text style={styles.sectionTitle}>Your Progress</Text>
-          <View style={styles.badgeRow}>
-            <View style={styles.badgeGlass}>
-              <Text>🔥 7 Day Streak</Text>
-            </View>
-            <View style={styles.badgeGlass}>
-              <Text>👟 10,000 Steps</Text>
-            </View>
-          </View>
+				if (workoutCompleted) {
+					console.log('🔄 Workout completion detected, refreshing stats...');
+					await loadAllData();
+					// Clear the trigger
+					await AsyncStorage.removeItem('workout_completed');
+				}
+			} catch (error) {
+				console.warn('⚠️ Could not check for workout completion:', error);
+			}
+		};
 
-          {/* QUOTE */}
-          <LinearGradient colors={["#11998e", "#38ef7d"]} style={styles.quoteCardGlass}>
-            <Text style={styles.quote}>"The only bad workout is the one that didn't happen"</Text>
-            <Text style={styles.quoteAuthor}>– Unknown</Text>
-          </LinearGradient>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
-	
-  );
+		// Check for 24-hour reset (new day)
+		const checkForDayReset = async () => {
+			try {
+				const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+				const lastResetDate = await AsyncStorage.getItem('last_stats_reset');
+				const today = new Date().toDateString();
+
+				if (lastResetDate !== today) {
+					console.log('🌅 New day detected, resetting stats...');
+					// Reset to initial values
+					setTodayStats({
+						calories: 0,
+						steps: 0,
+						minutes: 0
+					});
+					// Update reset date
+					await AsyncStorage.setItem('last_stats_reset', today);
+					// Fetch fresh stats for new day
+					await fetchDailyStats();
+				}
+			} catch (error) {
+				console.warn('⚠️ Could not check for day reset:', error);
+			}
+		};
+
+		// Check immediately and then every 5 seconds
+		checkForWorkoutCompletion();
+		checkForDayReset();
+
+		const workoutInterval = setInterval(checkForWorkoutCompletion, 5000);
+		const dayResetInterval = setInterval(checkForDayReset, 60000); // Check every minute for day change
+
+		return () => {
+			clearInterval(workoutInterval);
+			clearInterval(dayResetInterval);
+		};
+	}, [fetchDailyStats]);
+
+	// Pull-to-refresh functionality
+	const handleRefresh = useCallback(async () => {
+		setRefreshing(true);
+		await loadAllData();
+		setRefreshing(false);
+	}, [loadAllData]);
+
+	// Don't load AI insights automatically to prevent errors during onboarding
+	// User can access AI features from the AI chatbot when ready
+	useEffect(() => {
+		setAiInsight('Welcome to ZoeFit! Complete your profile to get personalized insights.');
+	}, []);
+
+	// Removed automatic AI insights loading to prevent errors during onboarding
+	// Users can access AI features through the AI chatbot when ready
+
+	const handleAiPress = () => {
+		router.push('/screens/aiChatbot' as any);
+	};
+
+	const updateCalories = (newCalories: number) => {
+		setTodayStats(prev => ({ ...prev, calories: newCalories }));
+	};
+
+	const updateSteps = (newSteps: number) => {
+		setTodayStats(prev => ({ ...prev, steps: newSteps }));
+	};
+
+	const updateMinutes = (newMinutes: number) => {
+		setTodayStats(prev => ({ ...prev, minutes: newMinutes }));
+	};
+
+	return (
+		<View style={{ flex: 1, backgroundColor: theme.background }}>
+			<SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top']}>
+				<ScrollView
+					style={[styles.container, { backgroundColor: theme.background }]}
+					showsVerticalScrollIndicator={false}
+					refreshControl={
+						<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+					}
+				>
+					{/* HEADER */}
+					<LinearGradient colors={isDarkMode ? ['#667eea', '#764ba2', '#f093fb'] : theme.headerGradient} style={styles.header}>
+						<View style={styles.headerTop}>
+							<Text style={styles.logo}>Zoefit</Text>
+							<TouchableOpacity onPress={handleAiPress} style={styles.aiButton}>
+								<Text style={styles.aiIcon}>🤖</Text>
+								{isAiActive && <Text style={styles.aiStatus}>Active</Text>}
+							</TouchableOpacity>
+						</View>
+						<View style={styles.welcomeCardGlass}>
+							<Text style={styles.welcome}>Welcome Back 👋</Text>
+							<Text style={styles.sub}>Ready to crush your fitness goals today?</Text>
+						</View>
+					</LinearGradient>
+
+					{/* OVERVIEW RINGS */}
+					<Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Overview</Text>
+					{isLoading ? (
+						<View style={styles.ringRow}>
+							<ActivityIndicator size="large" color="#00e0ff" />
+						</View>
+					) : (
+						<View style={styles.ringRow}>
+							<Ring label="Calories" value={todayStats.calories} fill={Math.min((todayStats.calories / 2000) * 100, 100)} color="#00e0ff" />
+							<Ring label="Steps" value={todayStats.steps.toLocaleString()} fill={Math.min((todayStats.steps / 10000) * 100, 100)} color="#43e97b" />
+							<Ring label="Minutes" value={todayStats.minutes} fill={Math.min((todayStats.minutes / 60) * 100, 100)} color="#ff9a9e" />
+						</View>
+					)}
+
+					{/* TODAY'S WORKOUT SESSIONS */}
+					<Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Workouts</Text>
+					{todayWorkoutSessions.length > 0 ? (
+						<View style={styles.workoutSessionsContainer}>
+							{todayWorkoutSessions.map((session, index) => (
+								<View key={index} style={[styles.workoutSessionCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+									<View style={styles.workoutSessionHeader}>
+										<Text style={[styles.workoutType, { color: theme.text }]}>
+											{session.workout_plan?.workout_type || 'Workout'}
+										</Text>
+										<Text style={[styles.workoutDuration, { color: theme.textSecondary }]}>
+											{session.duration_minutes || 0} min
+										</Text>
+									</View>
+									<View style={styles.workoutSessionDetails}>
+										<Text style={[styles.workoutCalories, { color: theme.textSecondary }]}>
+											🔥 {session.calories_burned || 0} cal
+										</Text>
+										<Text style={[styles.workoutStatus, {
+											color: session.completed ? '#43e97b' : '#ffa726'
+										}]}>
+											{session.completed ? '✅ Completed' : '⏳ In Progress'}
+										</Text>
+									</View>
+									{session.exercises_completed && session.exercises_completed.length > 0 && (
+										<Text style={[styles.exercisesText, { color: theme.textSecondary }]}>
+											{session.exercises_completed.length} exercises completed
+										</Text>
+									)}
+								</View>
+							))}
+						</View>
+					) : (
+						<View style={[styles.emptyWorkoutCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+							<Text style={[styles.emptyWorkoutText, { color: theme.textSecondary }]}>
+								No workouts yet today. Start one to see your progress!
+							</Text>
+						</View>
+					)}
+
+					{/* AI COACH */}
+					<TouchableOpacity
+						style={[styles.aiCardGlass, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+						onPress={() => router.push('/screens/aiChatbot' as any)}
+					>
+						<Text style={[styles.aiTitle, { color: theme.text }]}>🤖 Smart Fitness Coach</Text>
+						<Text style={[styles.aiText, { color: theme.textSecondary }]}>{aiInsight}</Text>
+					</TouchableOpacity>
+
+					{/* QUICK ACTIONS */}
+					<Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
+					<View style={styles.grid}>
+						<ActionCard icon="🏋️" title="Workout" onPress={() => router.push('/StartWorkout')} />
+						<ActionCard icon="📊" title="Progress" onPress={() => router.push('/screens/progress')} />
+						<ActionCard icon="🥗" title="Nutrition" />
+						<ActionCard icon="😴" title="Sleep" />
+					</View>
+
+					{/* BADGES */}
+					<Text style={[styles.sectionTitle, { color: theme.text }]}>Your Progress</Text>
+					<View style={styles.badgeRow}>
+						<View style={[styles.badgeGlass, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+							<Text style={[styles.badgeText, { color: theme.text }]}>🔥 7 Day Streak</Text>
+						</View>
+						<View style={[styles.badgeGlass, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+							<Text style={[styles.badgeText, { color: theme.text }]}>👟 10,000 Steps</Text>
+						</View>
+					</View>
+
+					{/* QUOTE */}
+					<LinearGradient colors={theme.headerGradient} style={styles.quoteCardGlass}>
+						<Text style={styles.quote}>"The only bad workout is the one that didn't happen"</Text>
+						<Text style={styles.quoteAuthor}>– Unknown</Text>
+					</LinearGradient>
+				</ScrollView>
+			</SafeAreaView>
+		</View >
+
+	);
 };
 
 // ----------------
@@ -100,14 +317,17 @@ type RingProps = {
 	color: string;
 };
 
-const Ring = ({ label, value, fill, color }: RingProps) => (
-	<View style={styles.ring}>
-		<View style={[styles.ringCircle, { borderColor: color }]}>
-			<Text style={styles.ringText}>{value}</Text>
+const Ring = ({ label, value, fill, color }: RingProps) => {
+	const { theme } = useTheme();
+	return (
+		<View style={[styles.ring, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+			<View style={[styles.ringCircle, { borderColor: color, backgroundColor: theme.cardBackground }]}>
+				<Text style={[styles.ringText, { color: theme.text }]}>{value}</Text>
+			</View>
+			<Text style={[styles.ringLabel, { color: theme.textSecondary }]}>{label}</Text>
 		</View>
-		<Text style={styles.ringLabel}>{label}</Text>
-	</View>
-);
+	);
+};
 
 type ActionCardProps = {
 	icon: string;
@@ -116,6 +336,7 @@ type ActionCardProps = {
 };
 
 const ActionCard = ({ icon, title, onPress }: ActionCardProps) => {
+	const { theme } = useTheme();
 	const scale = useRef(new Animated.Value(1)).current;
 	const onPressIn = () => {
 		Animated.spring(scale, { toValue: 0.96, useNativeDriver: false }).start();
@@ -124,7 +345,7 @@ const ActionCard = ({ icon, title, onPress }: ActionCardProps) => {
 		Animated.spring(scale, { toValue: 1, useNativeDriver: false }).start();
 	};
 	return (
-		<Animated.View style={[styles.actionCard, { transform: [{ scale }] }]}> 
+		<Animated.View style={[styles.actionCard, { backgroundColor: theme.cardBackground, borderColor: theme.border, transform: [{ scale }] }]}>
 			<TouchableOpacity
 				activeOpacity={0.8}
 				onPressIn={onPressIn}
@@ -133,7 +354,7 @@ const ActionCard = ({ icon, title, onPress }: ActionCardProps) => {
 				style={{ alignItems: 'center', width: '100%' }}
 			>
 				<Text style={styles.actionIcon}>{icon}</Text>
-				<Text style={styles.actionText}>{title}</Text>
+				<Text style={[styles.actionText, { color: theme.text }]}>{title}</Text>
 			</TouchableOpacity>
 		</Animated.View>
 	);
@@ -195,12 +416,14 @@ const styles = StyleSheet.create({
 	},
 	logo: {
 		color: "#fff",
-		fontSize: 28,
-		fontWeight: "bold",
-		letterSpacing: 2,
-		textShadowColor: '#38f9d7',
-		textShadowOffset: { width: 0, height: 2 },
-		textShadowRadius: 8,
+		fontSize: 32,
+		fontWeight: "800",
+		// letterSpacing: 1,
+		fontFamily: 'System',
+		textShadowColor: 'rgba(56, 249, 215, 0.4)',
+		textShadowOffset: { width: 0, height: 3 },
+		textShadowRadius: 12,
+		lineHeight: 38,
 	},
 	aiButton: {
 		backgroundColor: 'rgba(255,255,255,0.18)',
@@ -250,6 +473,71 @@ const styles = StyleSheet.create({
 		margin: 15,
 		color: '#2e7d32',
 		letterSpacing: 0.5,
+	},
+	// Workout Sessions Styles
+	workoutSessionsContainer: {
+		marginHorizontal: 15,
+		marginBottom: 20,
+	},
+	workoutSessionCard: {
+		padding: 15,
+		borderRadius: 12,
+		borderWidth: 1,
+		marginBottom: 10,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
+		shadowRadius: 4,
+		elevation: 3,
+	},
+	workoutSessionHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 8,
+	},
+	workoutType: {
+		fontSize: 16,
+		fontWeight: 'bold',
+	},
+	workoutDuration: {
+		fontSize: 14,
+	},
+	workoutSessionDetails: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 5,
+	},
+	workoutCalories: {
+		fontSize: 13,
+	},
+	workoutStatus: {
+		fontSize: 12,
+		fontWeight: '600',
+	},
+	exercisesText: {
+		fontSize: 12,
+		fontStyle: 'italic',
+		marginTop: 5,
+	},
+	emptyWorkoutCard: {
+		padding: 20,
+		borderRadius: 12,
+		borderWidth: 1,
+		marginHorizontal: 15,
+		marginBottom: 20,
+		alignItems: 'center',
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 1 },
+		shadowOpacity: 0.05,
+		shadowRadius: 2,
+		elevation: 1,
+	},
+	emptyWorkoutText: {
+		fontSize: 14,
+		textAlign: 'center',
+		fontStyle: 'italic',
 	},
 	ringRow: {
 		flexDirection: "row",
@@ -361,6 +649,10 @@ const styles = StyleSheet.create({
 		shadowOffset: { width: 0, height: 2 },
 		shadowOpacity: 0.10,
 		shadowRadius: 8,
+	},
+	badgeText: {
+		fontWeight: '600',
+		fontSize: 13,
 	},
 	quoteCardGlass: {
 		margin: 15,

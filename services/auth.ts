@@ -4,22 +4,24 @@ import { apiService, AuthResponse } from './api';
 const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 const USER_KEY = 'user_data';
+const ONBOARDING_COMPLETED_KEY = 'onboarding_completed';
 
 export interface UserData {
   id: number;
   email: string;
   username: string;
+  profile_picture?: string;
 }
 
 class AuthService {
   async login(email: string, password: string): Promise<AuthResponse> {
     try {
       const response = await apiService.login({ email, password });
-      
+
       // Store tokens and user data
       await this.storeTokens(response.tokens);
       await this.storeUserData(response.user);
-      
+
       return response;
     } catch (error) {
       throw error;
@@ -34,11 +36,14 @@ class AuthService {
         password,
         password2: password,
       });
-      
+
       // Store tokens and user data
       await this.storeTokens(response.tokens);
       await this.storeUserData(response.user);
-      
+
+      // Mark user as new (hasn't completed onboarding)
+      await this.setOnboardingCompleted(false);
+
       return response;
     } catch (error) {
       throw error;
@@ -50,6 +55,24 @@ class AuthService {
       return await apiService.forgotPassword(email);
     } catch (error) {
       throw error;
+    }
+  }
+
+  async setOnboardingCompleted(completed: boolean): Promise<void> {
+    try {
+      await AsyncStorage.setItem(ONBOARDING_COMPLETED_KEY, completed.toString());
+    } catch (error) {
+      console.error('Error setting onboarding completion status:', error);
+    }
+  }
+
+  async hasCompletedOnboarding(): Promise<boolean> {
+    try {
+      const completed = await AsyncStorage.getItem(ONBOARDING_COMPLETED_KEY);
+      return completed === 'true';
+    } catch (error) {
+      console.error('Error checking onboarding completion status:', error);
+      return false;
     }
   }
 
@@ -105,16 +128,56 @@ class AuthService {
       }
 
       const response = await apiService.refreshToken(refreshToken);
-      
+
       // Store new access token
       await AsyncStorage.setItem(ACCESS_TOKEN_KEY, response.access);
-      
+
       return response.access;
     } catch (error) {
       console.error('Token refresh failed:', error);
       // If refresh fails, clear storage and force re-login
       await this.clearStorage();
       return null;
+    }
+  }
+
+  async uploadProfilePicture(formData: FormData): Promise<{ message: string; profile_picture_url: string }> {
+    try {
+      const token = await this.getAccessToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      // Get the base URL from apiService
+      const baseUrl = apiService['baseURL'] || 'http://localhost:8000';
+
+      const response = await fetch(`${baseUrl}/api/auth/profile-picture/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type for FormData, let the browser set it with boundary
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Update user data with new profile picture
+      const userData = await this.getUserData();
+      if (userData) {
+        userData.profile_picture = result.profile_picture_url;
+        await this.storeUserData(userData);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Profile picture upload error:', error);
+      throw error;
     }
   }
 
@@ -154,6 +217,7 @@ class AuthService {
         ACCESS_TOKEN_KEY,
         REFRESH_TOKEN_KEY,
         USER_KEY,
+        ONBOARDING_COMPLETED_KEY,
       ]);
     } catch (error) {
       console.error('Error clearing storage:', error);
