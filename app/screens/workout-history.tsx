@@ -69,7 +69,7 @@ const WorkoutHistoryScreen = () => {
       await apiService.updateWorkoutCompletion({
         workout_plan_id: workoutId,
         completed: true,
-        user_rating: rating,
+        rating: rating,
       });
 
       // Update local state

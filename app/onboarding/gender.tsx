@@ -61,7 +61,7 @@ export default function GenderScreen() {
               disabled={!data.gender}
             >
               <LinearGradient 
-                colors={!data.gender ? ['#a5d6a7', '#81c784'] : ['#43e97b', '#38f9d7']} 
+                colors={!data.gender ? ['#a5d6a7', '#81c784'] : ['#43e97b', '#2e7d32']} 
                 style={styles.buttonGradient}
               >
                 <Text style={styles.buttonText}>Continue</Text>
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 5,
-    textShadowColor: '#38f9d7',
+    textShadowColor: '#4CAF50',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 30,
     marginTop: -30,
-    shadowColor: '#43e97b',
+    shadowColor: '#2e7d32',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 20,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderWidth: 2,
     borderColor: 'rgba(67,233,123,0.2)',
-    shadowColor: '#43e97b',
+    shadowColor: '#4CAF50',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   },
   optionSelected: {
     backgroundColor: 'rgba(67,233,123,0.1)',
-    borderColor: '#43e97b',
+    borderColor: '#4CAF50',
   },
   optionText: {
     fontSize: 16,
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: 15,
-    shadowColor: '#43e97b',
+    shadowColor: '#2e7d32',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -190,8 +190,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-    textShadowColor: '#38f9d7',
+    textShadowColor: '#2e7d32',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+    
   },
 });

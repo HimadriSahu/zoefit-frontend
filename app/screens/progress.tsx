@@ -218,19 +218,39 @@ const ProgressScreen = () => {
   const StatCard = ({ title, value, subtitle, icon }: { title: string; value: string | number; subtitle: string; icon: string }) => {
     const { theme } = useTheme();
     return (
-      <View style={[styles.statCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+      <TouchableOpacity 
+        style={[styles.statCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+        onPress={() => {
+          // Show detailed stat information
+          Alert.alert(
+            `${title} Details`,
+            `${icon} ${title}: ${value}\nPeriod: ${subtitle}\n\nTap to view more detailed analytics in future updates!`,
+            [{ text: 'OK', style: 'default' }]
+          );
+        }}
+      >
         <Text style={styles.statIcon}>{icon}</Text>
         <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
         <Text style={[styles.statTitle, { color: theme.text }]}>{title}</Text>
         <Text style={[styles.statSubtitle, { color: theme.textSecondary }]}>{subtitle}</Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 
   const WorkoutItem = ({ workout }: { workout: RecentWorkout }) => {
     const { theme } = useTheme();
     return (
-      <View style={[styles.workoutItem, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+      <TouchableOpacity 
+        style={[styles.workoutItem, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
+        onPress={() => {
+          // Navigate to workout details or show workout info
+          Alert.alert(
+            'Workout Details',
+            `Type: ${workout.type}\nDate: ${workout.date}\nDuration: ${workout.duration} minutes\nCalories: ${workout.calories} cal\nStatus: ${workout.completed ? 'Completed' : 'In Progress'}`,
+            [{ text: 'OK', style: 'default' }]
+          );
+        }}
+      >
         <View style={styles.workoutInfo}>
           <Text style={[styles.workoutType, { color: theme.text }]}>{workout.type}</Text>
           <Text style={[styles.workoutDate, { color: theme.textSecondary }]}>{workout.date}</Text>
@@ -239,7 +259,7 @@ const ProgressScreen = () => {
           <Text style={[styles.workoutDuration, { color: theme.textSecondary }]}>{workout.duration} min</Text>
           <Text style={[styles.workoutCalories, { color: theme.textSecondary }]}>{workout.calories} cal</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -310,7 +330,7 @@ const ProgressScreen = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Workouts</Text>
-              <TouchableOpacity style={styles.seeAllButton}>
+              <TouchableOpacity style={styles.seeAllButton} onPress={() => router.push('/screens/workout-history' as any)}>
                 <LinearGradient
                   colors={['#10b981', '#059669']}
                   start={{ x: 0, y: 0 }}

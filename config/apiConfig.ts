@@ -4,25 +4,24 @@ import { Platform } from 'react-native';
 const API_CONFIG = {
   // Production URL
   production: 'https://your-production-api.com',
-
-  // Development URLs in order of preference
+  
+// Development URLs in order of preference
   development: [
-    'http://192.168.1.5:8000', // Current working machine IP (try first)
-    'http://10.0.2.2:8000', // Android emulator → host machine localhost
+    'http://10.0.2.2:8000', // Android emulator → host machine localhost (try first when on Android)
+    'http://192.168.0.192:8000', // Current machine IP (working connection)
     'http://localhost:8000',
     'http://127.0.0.1:8000',
     'http://172.23.148.1:8000', // Common local network
-    'http://192.168.29.36:8000',
-    'http://10.45.143.221:8000',
-
+    'http://10.189.95.1:8000',
+    
   ],
-
+  
   // Timeout settings
-  timeout: 5000,
-
+  timeout: 5000, // Reduced timeout for faster failover
+  
   // Retry settings
-  maxRetries: 3,
-  retryDelay: 1000,
+  maxRetries: 2, // Reduced retries for faster failover
+  retryDelay: 500, // Reduced delay
 };
 
 // Get the current platform
@@ -40,7 +39,7 @@ export const getApiBaseUrl = async (): Promise<string> => {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout);
-
+      
       const response = await fetch(`${url}/api/auth/`, {
         method: 'GET',
         signal: controller.signal,
@@ -48,10 +47,10 @@ export const getApiBaseUrl = async (): Promise<string> => {
           'Content-Type': 'application/json',
         },
       });
-
+      
       clearTimeout(timeoutId);
-
-      if (response.ok || response.status === 405) { // 405 means server is running but method not allowed
+      
+      if (response.ok || response.status === 405 || response.status === 404) { // 405 means server is running but method not allowed, 404 means health endpoint doesn't exist
         console.log(`✅ Connected to API at: ${url}`);
         return url;
       }
@@ -60,9 +59,9 @@ export const getApiBaseUrl = async (): Promise<string> => {
       continue;
     }
   }
-
+  
   // If all URLs fail, use platform-appropriate fallback
-  const fallback = isAndroid ? 'http://10.0.2.2:8000' : API_CONFIG.development[0];
+  const fallback = isAndroid ? 'http://192.168.0.192:8000' : API_CONFIG.development[1]; // Use working IP for Android
   console.warn('⚠️ All API URLs failed, using fallback:', fallback);
   return fallback;
 };
@@ -72,9 +71,15 @@ export const getApiBaseUrlSync = (): string => {
   if (!__DEV__) {
     return API_CONFIG.production;
   }
-
-  // Return the known working URL first
-  return 'http://192.168.1.5:8000';
+  
+  // Return the most likely working URL based on platform
+  if (isAndroid) {
+    return 'http://192.168.0.192:8000'; // Use working IP for Android
+  } else if (isIOS) {
+    return 'http://127.0.0.1:8000'; // iOS simulator localhost
+  }
+  
+  return API_CONFIG.development[1]; // Web/other - working IP
 };
 
 // Export configuration

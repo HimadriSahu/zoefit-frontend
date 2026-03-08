@@ -317,12 +317,7 @@ const PersonalInfoScreen = () => {
         case 'phoneNumber':
           setPhoneNumber(tempValue);
           break;
-        case 'bio':
-          setBio(tempValue);
-          break;
-        case 'location':
-          setLocation(tempValue);
-          break;
+
         case 'targetWeight':
           const targetWt = parseFloat(tempValue);
           if (isNaN(targetWt) || targetWt <= 0) throw new Error('Invalid target weight');
@@ -599,22 +594,10 @@ const PersonalInfoScreen = () => {
             () => handleEditStart('phoneNumber', data.phoneNumber)
           )}
 
-          {renderInfoField(
-            formatLabel('location'),
-            data.location || 'Not set',
-            () => handleEditStart('location', data.location)
-          )}
+        
         </View>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>About You</Text>
-
-          {renderInfoField(
-            formatLabel('bio'),
-            data.bio || 'Not set',
-            () => handleEditStart('bio', data.bio)
-          )}
-        </View>
+        
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Goals</Text>

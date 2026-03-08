@@ -25,6 +25,7 @@ const HomeScreen = () => {
 	const [isAiActive, setIsAiActive] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
+	const [showMenu, setShowMenu] = useState(false);
 	const [todayStats, setTodayStats] = useState({
 		calories: 0,
 		steps: 0,
@@ -171,7 +172,33 @@ const HomeScreen = () => {
 	// Removed automatic AI insights loading to prevent errors during onboarding
 	// Users can access AI features through the AI chatbot when ready
 
-	const handleAiPress = () => {
+	// Menu handlers
+	const handleMenuPress = () => {
+		setShowMenu(!showMenu);
+	};
+
+	const handleAchievements = () => {
+		setShowMenu(false);
+		// For now, show a placeholder message
+		alert('Achievements section coming soon!');
+	};
+
+	const handleWorkoutHistory = () => {
+		setShowMenu(false);
+		router.push('/screens/workout-history' as any);
+	};
+
+	const handleLogout = async () => {
+		setShowMenu(false);
+		try {
+			await authService.logout();
+			router.replace('/screens/welcomePage' as any);
+		} catch (error) {
+			console.error('Logout error:', error);
+		}
+	};
+
+	const handleAiChatbotPress = () => {
 		router.push('/screens/aiChatbot' as any);
 	};
 
@@ -200,12 +227,34 @@ const HomeScreen = () => {
 					{/* HEADER */}
 					<LinearGradient colors={isDarkMode ? ['#667eea', '#764ba2', '#f093fb'] : theme.headerGradient} style={styles.header}>
 						<View style={styles.headerTop}>
+					    <TouchableOpacity onPress={handleMenuPress} style={styles.menuButton}>
+									<Text style={styles.menuIcon}>⋮</Text>
+								</TouchableOpacity>
 							<Text style={styles.logo}>Zoefit</Text>
-							<TouchableOpacity onPress={handleAiPress} style={styles.aiButton}>
-								<Text style={styles.aiIcon}>🤖</Text>
-								{isAiActive && <Text style={styles.aiStatus}>Active</Text>}
-							</TouchableOpacity>
+							<View style={styles.headerButtons}>
+								<TouchableOpacity onPress={handleAiChatbotPress} style={styles.aiButton}>
+									<Text style={styles.aiIcon}>🤖</Text>
+									{isAiActive && <Text style={styles.aiStatus}>Active</Text>}
+								</TouchableOpacity>
+								
+							</View>
 						</View>
+						
+						{/* Menu Dropdown */}
+						{showMenu && (
+							<View style={[styles.menuDropdown, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+								<TouchableOpacity style={styles.menuItem} onPress={handleAchievements}>
+									<Text style={[styles.menuItemText, { color: theme.text }]}>🏆 Achievements</Text>
+								</TouchableOpacity>
+								<TouchableOpacity style={styles.menuItem} onPress={handleWorkoutHistory}>
+									<Text style={[styles.menuItemText, { color: theme.text }]}>📋 Workout History</Text>
+								</TouchableOpacity>
+								<TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+									<Text style={[styles.menuItemText, { color: theme.text }]}>🚪 Logout</Text>
+								</TouchableOpacity>
+							</View>
+						)}
+						
 						<View style={styles.welcomeCardGlass}>
 							<Text style={styles.welcome}>Welcome Back 👋</Text>
 							<Text style={styles.sub}>Ready to crush your fitness goals today?</Text>
@@ -285,7 +334,7 @@ const HomeScreen = () => {
 					</View>
 
 					{/* BADGES */}
-					<Text style={[styles.sectionTitle, { color: theme.text }]}>Your Progress</Text>
+					{/*<Text style={[styles.sectionTitle, { color: theme.text }]}>Your Progress</Text>
 					<View style={styles.badgeRow}>
 						<View style={[styles.badgeGlass, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
 							<Text style={[styles.badgeText, { color: theme.text }]}>🔥 7 Day Streak</Text>
@@ -293,12 +342,12 @@ const HomeScreen = () => {
 						<View style={[styles.badgeGlass, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
 							<Text style={[styles.badgeText, { color: theme.text }]}>👟 10,000 Steps</Text>
 						</View>
-					</View>
+					</View>*/}
 
 					{/* QUOTE */}
 					<LinearGradient colors={theme.headerGradient} style={styles.quoteCardGlass}>
 						<Text style={styles.quote}>"The only bad workout is the one that didn't happen"</Text>
-						<Text style={styles.quoteAuthor}>– Unknown</Text>
+						<Text style={styles.quoteAuthor}>-Joe Cirulli</Text>
 					</LinearGradient>
 				</ScrollView>
 			</SafeAreaView>
@@ -633,27 +682,7 @@ const styles = StyleSheet.create({
 		fontSize: 15,
 		color: '#2e7d32',
 	},
-	badgeRow: {
-		flexDirection: "row",
-		justifyContent: "space-around",
-		marginBottom: 10,
-	},
-	badgeGlass: {
-		backgroundColor: 'rgba(255,255,255,0.18)',
-		padding: 15,
-		borderRadius: 15,
-		elevation: 2,
-		minWidth: 120,
-		alignItems: 'center',
-		shadowColor: '#43e97b',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.10,
-		shadowRadius: 8,
-	},
-	badgeText: {
-		fontWeight: '600',
-		fontSize: 13,
-	},
+	
 	quoteCardGlass: {
 		margin: 15,
 		padding: 20,
@@ -738,5 +767,53 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		color: '#2e7d32',
 		fontWeight: '600',
+	},
+	headerButtons: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 10,
+	},
+	menuButton: {
+		backgroundColor: 'rgba(255,255,255,0.3)',
+		borderRadius: 20,
+		padding: 10,
+		alignItems: 'center',
+		justifyContent: 'center',
+		shadowColor: '#43e97b',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.12,
+		shadowRadius: 8,
+		minWidth: 45,
+		minHeight: 28,
+	},
+	menuIcon: {
+		fontSize: 24,
+		color: '#fff',
+		fontWeight: 'bold',
+	},
+	menuDropdown: {
+		position: 'absolute',
+		top: 40,
+		left: 20,
+		backgroundColor: 'rgba(255,255,255,0.95)',
+		borderRadius: 12,
+		padding: 8,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.15,
+		shadowRadius: 12,
+		elevation: 8,
+		zIndex: 1000,
+		minWidth: 180,
+	},
+	menuItem: {
+		paddingVertical: 12,
+		paddingHorizontal: 16,
+		borderRadius: 8,
+		marginVertical: 2,
+	},
+	menuItemText: {
+		fontSize: 16,
+		fontWeight: '500',
 	},
 });

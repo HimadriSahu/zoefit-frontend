@@ -232,11 +232,7 @@ const SettingsScreen = () => {
           {/* Account Management */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Account Management</Text>
-            <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => router.push('/screens/personal-info')}>
-              <Text style={styles.menuIcon}>👤</Text>
-              <Text style={[styles.menuTitle, { color: theme.text }]}>Personal Information</Text>
-              <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
-            </TouchableOpacity>
+           
             <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => router.push('/screens/goals-settings')}>
               <Text style={styles.menuIcon}>🎯</Text>
               <Text style={[styles.menuTitle, { color: theme.text }]}>Goals Settings</Text>
@@ -257,11 +253,7 @@ const SettingsScreen = () => {
               <Text style={[styles.menuTitle, { color: theme.text }]}>Email Preferences</Text>
               <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]}>
-              <Text style={styles.menuIcon}>🔗</Text>
-              <Text style={[styles.menuTitle, { color: theme.text }]}>Connected Apps</Text>
-              <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
-            </TouchableOpacity>
+          
           </View>
 
           {/* Data & Storage */}
