@@ -48,6 +48,10 @@ export interface HealthMetricsResponse {
     activity_level: string;
     daily_calories: number;
     bmi_category: string;
+    dietary_preferences?: Record<string, any>;
+    medical_conditions?: string[];
+    allergies?: string[];
+    target_weight?: number;
   };
 }
 
@@ -59,6 +63,7 @@ export interface WorkoutCompletionData {
   completion_time_minutes?: number;
   calories_burned?: number;
   rating?: number;
+  user_rating?: number;
   exercises_completed?: any[];
   workout_type?: string; // Add workout type for default workouts
 }
@@ -225,7 +230,14 @@ export class ApiError extends Error {
 
 class ApiService {
   private baseURL: string;
+  private baseURLSet: boolean = false;
   private isInitialized: boolean = false;
+  private isRefreshing: boolean = false;
+  private refreshSubscribers: Array<(token: string | null) => void> = [];
+  private retryCount: number = 0;
+  private maxRetries: number = 2;
+  private lastWorkingURL: string | null = null;
+  private failedURLs: Set<string> = new Set();
 
   constructor() {
     // Use synchronous URL for immediate initialization
@@ -233,15 +245,90 @@ class ApiService {
     this.initializeAsync();
   }
 
+  // Helper methods for enhanced error handling
+  private getEndpointName(endpoint: string): string {
+    const endpointMap: Record<string, string> = {
+      '/health-metrics/': 'Health Metrics',
+      '/health-metrics/get/': 'Get Health Metrics',
+      '/workout-preferences/': 'Save Workout Preferences',
+      '/workout-preferences/get/': 'Get Workout Preferences',
+      '/workout-plan/generate/': 'Generate Workout Plan',
+      '/workout-plans/': 'Get Workout Plans',
+      '/workout-complete/': 'Update Workout Completion',
+      '/meal-plan/generate/': 'Generate Meal Plan',
+      '/meal-plans/': 'Get Meal Plans',
+      '/chat/': 'AI Chat',
+      '/chat/history/': 'Chat History',
+      '/progress/': 'Progress Tracking',
+      '/predict-progress/': 'Predict Progress',
+      '/insights/': 'AI Insights',
+      '/adapt-workout/': 'Adapt Workout Plan',
+      '/analytics/user/': 'User Analytics',
+      '/daily-stats/': 'Daily Stats',
+      '/workout-sessions/': 'Workout Sessions',
+      '/dashboard/': 'Dashboard',
+      '/streaks/': 'Streaks',
+      '/achievements/': 'Achievements',
+      '/profiles/profile/': 'User Profile',
+      '/profiles/profile/create/': 'Create Profile',
+      '/profiles/profile/update/': 'Update Profile',
+      '/profiles/profile/upload-picture/': 'Upload Profile Picture',
+      '/profiles/contact-info/': 'Get Contact Information',
+      '/profiles/contact-info/update/': 'Update Contact Information',
+    };
+
+    return endpointMap[endpoint] || endpoint;
+  }
+
+  private getEndpointType(endpoint: string): string {
+    if (endpoint.startsWith('/auth/') || endpoint === '/login/' || endpoint === '/register/') {
+      return 'Authentication';
+    } else if (endpoint.startsWith('/profiles/')) {
+      return 'User Profile';
+    } else if (endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/workout-sessions/') ||
+      endpoint.startsWith('/dashboard/') || endpoint.startsWith('/achievements/') ||
+      endpoint.startsWith('/streaks/')) {
+      return 'Frontend Features';
+    } else {
+      return 'AI Features';
+    }
+  }
+
   // Async initialization to find the best working URL
   private async initializeAsync() {
     try {
+      // If we have a working URL from before, try it first but verify it still works
+      if (this.lastWorkingURL) {
+        try {
+          const testUrl = `${this.lastWorkingURL}/api/auth/login/`;
+          const testResponse = await fetch(testUrl, {
+            method: 'OPTIONS',
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+          if (testResponse.status === 200 || testResponse.status === 405) {
+            this.baseURL = this.lastWorkingURL;
+            console.log('✅ Using last known working URL:', this.baseURL);
+            this.isInitialized = true;
+            return;
+          } else {
+            console.log('⚠️ Last working URL no longer valid, finding new one');
+            this.lastWorkingURL = null;
+          }
+        } catch (error) {
+          console.log('⚠️ Last working URL failed, finding new one');
+          this.lastWorkingURL = null;
+        }
+      }
+
       const bestUrl = await getApiBaseUrl();
       if (bestUrl !== this.baseURL) {
         this.baseURL = bestUrl;
         console.log('🔄 Updated API URL to:', this.baseURL);
       }
       this.isInitialized = true;
+      this.retryCount = 0; // Reset retry count on successful initialization
+      this.lastWorkingURL = this.baseURL; // Cache the working URL
     } catch (error) {
       console.warn('⚠️ API initialization failed, using fallback URL');
       this.isInitialized = true;
@@ -261,6 +348,7 @@ class ApiService {
     // Determine the base URL based on endpoint type
     const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/login/' || endpoint === '/register/' || endpoint === '/token/refresh/' || endpoint === '/forgot-password/' || endpoint === '/logout/';
     const isProfilesEndpoint = endpoint.startsWith('/profiles/');
+    const isUsersEndpoint = endpoint.startsWith('/users/');
     const isFrontendEndpoint = endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/workout-sessions/') || endpoint.startsWith('/dashboard/') || endpoint.startsWith('/achievements/') || endpoint.startsWith('/streaks/') || endpoint.startsWith('/progress-') || endpoint.startsWith('/meal-logs/') || endpoint.startsWith('/nutrition-summary/') || endpoint.startsWith('/workout-stats/');
 
     let baseUrl: string;
@@ -268,13 +356,15 @@ class ApiService {
       baseUrl = `${this.baseURL}/api/auth`;
     } else if (isProfilesEndpoint) {
       baseUrl = `${this.baseURL}/api/profiles`;
+    } else if (isUsersEndpoint) {
+      baseUrl = `${this.baseURL}/api/users`;
     } else if (isFrontendEndpoint) {
       baseUrl = `${this.baseURL}/api/frontend`;
     } else {
       baseUrl = `${this.baseURL}/api/ai`;
     }
 
-    const url = isAuthEndpoint ? `${baseUrl}${endpoint.replace('/auth/', '/')}` : isProfilesEndpoint ? `${baseUrl}${endpoint}` : `${baseUrl}${endpoint}`;
+    const url = isAuthEndpoint ? `${baseUrl}${endpoint.replace('/auth/', '/')}` : isProfilesEndpoint ? `${baseUrl}${endpoint}` : isUsersEndpoint ? `${baseUrl}${endpoint}` : `${baseUrl}${endpoint}`;
 
     console.log('🌐 API Request:', { url, method: options.method || 'GET', useAuth });
 
@@ -290,10 +380,15 @@ class ApiService {
     if (useAuth) {
       const token = await this.getAuthToken();
       if (token) {
-        config.headers = {
-          ...config.headers,
-          'Authorization': `Bearer ${token}`,
-        };
+        // Check if token is close to expiration (proactive refresh)
+        await this.checkAndRefreshTokenIfNeeded(token);
+        const freshToken = await this.getAuthToken();
+        if (freshToken) {
+          config.headers = {
+            ...config.headers,
+            'Authorization': `Bearer ${freshToken}`,
+          };
+        }
       } else {
         console.warn('🚨 No auth token available for protected endpoint');
       }
@@ -374,6 +469,23 @@ class ApiService {
         }
 
         const msg = data?.detail || data?.error || JSON.stringify(data) || `HTTP ${response.status}`;
+
+        // Enhanced error handling for specific status codes
+        if (response.status === 404) {
+          const endpointName = this.getEndpointName(endpoint);
+          const enhancedMsg = `Endpoint not found: ${endpointName}. This feature may not be available yet or the endpoint has changed.`;
+          console.warn(`🔍 404 Error - ${enhancedMsg}`);
+          throw new ApiError(enhancedMsg, response.status, { ...data, endpoint_type: this.getEndpointType(endpoint) });
+        } else if (response.status === 500) {
+          const enhancedMsg = `Server error occurred. Please try again later. If the problem persists, contact support.`;
+          console.error(`🔥 500 Error - ${enhancedMsg}`);
+          throw new ApiError(enhancedMsg, response.status, data);
+        } else if (response.status === 429) {
+          const enhancedMsg = `Too many requests. Please wait a moment before trying again.`;
+          console.warn(`⏱️ 429 Error - ${enhancedMsg}`);
+          throw new ApiError(enhancedMsg, response.status, data);
+        }
+
         throw new ApiError(msg, response.status, data);
       }
 
@@ -381,53 +493,85 @@ class ApiService {
     } catch (error) {
       console.error('❌ API Error:', error);
 
-      // If it's a network error, try to reconnect with a different URL
-      if (error instanceof Error && error.message.includes('Network request failed')) {
-        console.log('🔄 Network error detected, trying to reconnect...');
-        try {
-          const newUrl = await getApiBaseUrl();
-          if (newUrl !== this.baseURL) {
-            this.baseURL = newUrl;
-            console.log('🔄 Retrying with new URL:', this.baseURL);
+      // Enhanced error handling for different error types
+      if (error instanceof ApiError) {
+        // If it's already an ApiError, just re-throw it
+        throw error;
+      }
 
-            // Retry the request with the new URL
-            let retryBaseUrl: string;
-            if (isAuthEndpoint) {
-              retryBaseUrl = `${this.baseURL}/api/auth`;
-            } else if (isProfilesEndpoint) {
-              retryBaseUrl = `${this.baseURL}/api/profiles`;
-            } else if (isFrontendEndpoint) {
-              retryBaseUrl = `${this.baseURL}/api/frontend`;
-            } else {
-              retryBaseUrl = `${this.baseURL}/api/ai`;
-            }
+      // Handle network errors
+      if (error instanceof Error) {
+        if (error.message.includes('Network request failed') || error.message.includes('fetch')) {
+          console.warn('🌐 Network error detected, attempting reconnection...');
 
-            const retryUrl = isAuthEndpoint ? `${retryBaseUrl}${endpoint.replace('/auth/', '/')}` : `${retryBaseUrl}${endpoint}`;
-            const response = await fetch(retryUrl, config);
-            const text = await response.text();
-            let data: any = {};
+          // Only retry if we haven't exceeded max retries
+          if (this.retryCount < this.maxRetries) {
+            this.retryCount++;
+            console.log(`🔄 Network error detected, trying to reconnect... (${this.retryCount}/${this.maxRetries})`);
+
             try {
-              if (text && response.headers.get('content-type')?.includes('application/json')) {
-                data = JSON.parse(text);
-              }
-            } catch (_) {
-              data = {};
-            }
-            if (!response.ok) {
-              const msg = data?.detail || data?.error || JSON.stringify(data) || `HTTP ${response.status}`;
-              throw new ApiError(msg, response.status, data);
-            }
+              const newUrl = await getApiBaseUrl();
+              if (newUrl !== this.baseURL) {
+                this.baseURL = newUrl;
+                console.log('🔄 Retrying with new URL:', this.baseURL);
 
-            return data as T;
+                // Retry the request with the new URL
+                let retryBaseUrl: string;
+                if (isAuthEndpoint) {
+                  retryBaseUrl = `${this.baseURL}/api/auth`;
+                } else if (isProfilesEndpoint) {
+                  retryBaseUrl = `${this.baseURL}/api/profiles`;
+                } else if (isFrontendEndpoint) {
+                  retryBaseUrl = `${this.baseURL}/api/frontend`;
+                } else {
+                  retryBaseUrl = `${this.baseURL}/api/ai`;
+                }
+
+                const retryUrl = isAuthEndpoint ? `${retryBaseUrl}${endpoint.replace('/auth/', '/')}` : `${retryBaseUrl}${endpoint}`;
+                const response = await fetch(retryUrl, config);
+                const text = await response.text();
+                let data: any = {};
+                try {
+                  if (text && response.headers.get('content-type')?.includes('application/json')) {
+                    data = JSON.parse(text);
+                  }
+                } catch (_) {
+                  data = {};
+                }
+                if (!response.ok) {
+                  const msg = data?.detail || data?.error || JSON.stringify(data) || `HTTP ${response.status}`;
+                  throw new ApiError(msg, response.status, data);
+                }
+
+                // Reset retry count on successful retry
+                this.retryCount = 0;
+                this.lastWorkingURL = this.baseURL; // Cache the successful URL
+                this.failedURLs.clear(); // Clear failed URLs on success
+                return data as T;
+              }
+            } catch (retryError) {
+              console.error('❌ Retry failed:', retryError);
+            }
+          } else {
+            console.warn('⚠️ Max retries reached, giving up');
+            this.retryCount = 0; // Reset for future requests
           }
-        } catch (retryError) {
-          console.error('❌ Retry failed:', retryError);
+
+          // If we're here, all retries failed
+          throw new ApiError('Network connection failed. Please check your internet connection and try again.', undefined, {
+            error: 'Network error',
+            detail: error.message,
+            retry_count: this.retryCount
+          });
+        } else if (error.message.includes('AbortError')) {
+          throw new ApiError('Request timed out. Please check your connection and try again.', undefined, {
+            error: 'Timeout',
+            detail: error.message
+          });
         }
       }
 
-      if (error instanceof Error) {
-        throw new ApiError(error.message || 'Network error', undefined, { error: error.message });
-      }
+      // Generic error fallback
       throw error;
     }
   }
@@ -555,45 +699,137 @@ class ApiService {
     }
   }
 
-  // Helper method to refresh access token
+  // Helper method to clear all authentication data
+  async clearAuthData(): Promise<void> {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user_data', 'onboarding_completed']);
+      console.log('🧹 Cleared all auth tokens and user data');
+    } catch (error) {
+      console.warn('⚠️ Could not clear auth data:', error);
+    }
+  }
+
+  // Helper method to refresh access token with queuing
   private async refreshAuthToken(): Promise<string | null> {
+    // If already refreshing, wait for the current refresh to complete
+    if (this.isRefreshing) {
+      console.log('⏳ Token refresh already in progress, waiting...');
+      return new Promise((resolve) => {
+        this.refreshSubscribers.push((token: string | null) => {
+          resolve(token);
+        });
+      });
+    }
+
+    this.isRefreshing = true;
+
     try {
       let AsyncStorage;
       try {
         AsyncStorage = require('@react-native-async-storage/async-storage').default;
       } catch (importError) {
         console.warn('⚠️ AsyncStorage not available:', importError);
+        this.notifySubscribers(null);
         return null;
       }
 
       const refreshToken = await AsyncStorage.getItem('refresh_token');
       if (!refreshToken) {
         console.warn('❌ No refresh token available');
+        this.notifySubscribers(null);
         return null;
       }
 
       console.log('🔄 Refreshing access token...');
-      const response = await this.request<{ access: string }>('/token/refresh/', {
+
+      // Use the auth endpoint directly for token refresh
+      const url = `${this.baseURL}/api/auth/token/refresh/`;
+      const config: RequestInit = {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ refresh: refreshToken }),
-      });
+      };
+
+      const response = await fetch(url, config);
+      console.log('📡 Token Refresh Response Status:', response.status);
+
+      let data: any;
+      try {
+        const text = await response.text();
+        if (text && response.headers.get('content-type')?.includes('application/json')) {
+          data = JSON.parse(text);
+        } else {
+          data = text ? { detail: text.slice(0, 200) } : {};
+        }
+      } catch (_) {
+        data = { detail: 'Invalid response from server' };
+      }
+      console.log('📊 Token Refresh Response Data:', data);
+
+      if (!response.ok) {
+        throw new ApiError(data?.detail || data?.error || 'Token refresh failed', response.status, data);
+      }
 
       // Store the new access token
-      await AsyncStorage.setItem('access_token', response.access);
+      await AsyncStorage.setItem('access_token', data.access);
       console.log('✅ Access token refreshed successfully');
 
-      return response.access;
-    } catch (error) {
+      // Notify all waiting subscribers
+      this.notifySubscribers(data.access);
+      return data.access;
+    } catch (error: any) {
       console.error('❌ Token refresh failed:', error);
-      // Clear tokens on refresh failure and force re-login
-      try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user_data', 'onboarding_completed']);
-        console.log('🧹 Cleared all auth tokens and user data due to token refresh failure');
-      } catch (clearError) {
-        console.warn('⚠️ Could not clear tokens:', clearError);
+
+      // Check for specific blacklist or invalid token errors
+      const isBlacklistedError = error?.message?.includes('Token is blacklisted') ||
+        error?.message?.includes('Token is invalid') ||
+        error?.message?.includes('Given token not valid') ||
+        error?.message?.includes('Invalid token') ||
+        error?.status === 401;
+
+      if (isBlacklistedError) {
+        console.log('🧹 Token is invalid/blacklisted, clearing all auth data');
+        // Clear tokens on genuine auth failure and force re-login
+        await this.clearAuthData();
+        // Notify all subscribers that refresh failed
+        this.notifySubscribers(null);
+        return null;
+      } else {
+        console.log('⚠️ Token refresh failed due to network issues, keeping existing tokens');
+        // For network issues, don't clear tokens and let retry mechanism handle it
+        this.notifySubscribers(null);
+        return null;
       }
-      return null;
+    } finally {
+      this.isRefreshing = false;
+    }
+  }
+
+  // Helper method to notify all subscribers of token refresh result
+  private notifySubscribers(token: string | null): void {
+    this.refreshSubscribers.forEach(callback => callback(token));
+    this.refreshSubscribers = [];
+  }
+
+  // Helper method to check token expiration and refresh proactively
+  private async checkAndRefreshTokenIfNeeded(token: string): Promise<void> {
+    try {
+      // Parse JWT token to check expiration
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      const timeUntilExpiry = payload.exp - currentTime;
+
+      // Refresh if token expires within 5 minutes (300 seconds)
+      if (timeUntilExpiry < 300) {
+        console.log('⏰ Token expires soon, proactively refreshing...');
+        await this.refreshAuthToken();
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not parse token for expiration check:', error);
+      // If we can't parse the token, don't attempt refresh
     }
   }
 
@@ -608,7 +844,34 @@ class ApiService {
   }
 
   async getHealthMetrics(): Promise<HealthMetricsResponse> {
-    return this.request<HealthMetricsResponse>('/health-metrics/get/', {}, true);
+    try {
+      return await this.request<HealthMetricsResponse>('/health-metrics/get/');
+    } catch (error: any) {
+      // If no health metrics found, return default values
+      if (error.status === 404 ||
+        error.message?.includes('No HealthMetrics matches') ||
+        error.message?.includes('Health metrics not found') ||
+        error.message?.includes('health profile')) {
+        console.log('📊 No health metrics found, using defaults');
+        return {
+          message: 'Default health metrics',
+          metrics: {
+            height: 170,
+            weight: 70,
+            bmi: 24.2,
+            fitness_goal: 'maintenance',
+            activity_level: 'moderate',
+            daily_calories: 2000,
+            bmi_category: 'Normal',
+            dietary_preferences: {},
+            medical_conditions: [],
+            allergies: [],
+            target_weight: undefined
+          }
+        };
+      }
+      throw error;
+    }
   }
 
   // Workout Plans
@@ -654,33 +917,149 @@ class ApiService {
     }, true);
   }
 
-  // User Profile
-  async createOrUpdateUserProfile(data: UserProfileData): Promise<UserProfileResponse> {
-    try {
-      // First try to get existing profile
-      const existingProfile = await this.getUserProfile().catch(() => null);
+  // ============= USER PROFILE API =============
 
-      if (existingProfile) {
-        // Update existing profile
-        return this.request<UserProfileResponse>('/profiles/profile/update/', {
-          method: 'PATCH',
-          body: JSON.stringify(data),
-        }, true);
-      } else {
-        // Create new profile
-        return this.request<UserProfileResponse>('/profiles/profile/create/', {
-          method: 'POST',
-          body: JSON.stringify(data),
-        }, true);
+  // Comprehensive User Profile Methods
+  async getComprehensiveProfile(): Promise<any> {
+    return this.request<any>('/users/profile/', {}, true);
+  }
+
+  async updateComprehensiveProfile(data: any): Promise<any> {
+    return this.request<any>('/users/profile/update/', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }, true);
+  }
+
+  async submitOnboardingData(data: any): Promise<any> {
+    try {
+      // Validate required fields before submission
+      const requiredFields = ['gender', 'height', 'weight', 'fitness_goal'];
+      const missingFields = requiredFields.filter(field => !data[field]);
+
+      if (missingFields.length > 0) {
+        console.warn('⚠️ Missing required onboarding fields:', missingFields);
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
       }
+
+      // Clean and validate data
+      const cleanedData = {
+        gender: data.gender,
+        date_of_birth: data.date_of_birth || null,
+        height: Number(data.height) || null,
+        weight: Number(data.weight) || null,
+        fitness_goal: data.fitness_goal,
+        target_weight: Number(data.target_weight) || null,
+        activity_level: data.activity_level || 'moderate',
+        breakfast_time: data.breakfast_time || null,
+        dinner_time: data.dinner_time || null,
+        phone_number: data.phone_number || null,
+        bio: data.bio || null,
+        location: data.location || null,
+        dietary_preferences: data.dietary_preferences || {},
+        medical_conditions: Array.isArray(data.medical_conditions) ? data.medical_conditions : [],
+        allergies: Array.isArray(data.allergies) ? data.allergies : [],
+        difficulty_level: data.difficulty_level || 'beginner',
+        workout_type_preference: data.workout_type_preference || 'mixed',
+        body_fat_percentage: Number(data.body_fat_percentage) || null,
+        muscle_mass: Number(data.muscle_mass) || null,
+      };
+
+      console.log('📤 Submitting validated onboarding data:', cleanedData);
+
+      const response = await this.request<any>('/users/onboarding/', {
+        method: 'POST',
+        body: JSON.stringify(cleanedData),
+      }, true);
+
+      console.log('✅ Onboarding data submitted successfully');
+      return response;
     } catch (error) {
-      console.error('❌ Profile operation failed:', error);
+      console.error('❌ Onboarding data submission failed:', error);
       throw error;
     }
   }
 
+  async getOnboardingStatus(): Promise<any> {
+    return this.request<any>('/users/onboarding/status/', {}, true);
+  }
+
+  async deleteProfilePicture(): Promise<any> {
+    return this.request<any>('/users/profile/picture/delete/', {
+      method: 'DELETE',
+    }, true);
+  }
+
+  async getProfileAnalytics(): Promise<any> {
+    return this.request<any>('/users/profile/analytics/', {}, true);
+  }
+
+  async trackActivity(): Promise<any> {
+    return this.request<any>('/users/activity/', {
+      method: 'POST',
+    }, true);
+  }
+
+  // Legacy User Profile Methods (for backward compatibility)
+  async createOrUpdateUserProfile(data: UserProfileData): Promise<UserProfileResponse> {
+    // Map to comprehensive user profile
+    const comprehensiveData = {
+      first_name: data.first_name,
+      last_name: data.last_name,
+      phone_number: data.phone_number,
+      bio: data.bio,
+      location: data.location,
+      profile_picture: data.profile_picture,
+      fitness_goal: data.fitness_goal,
+    };
+
+    return this.updateComprehensiveProfile(comprehensiveData);
+  }
+
   async getUserProfile(): Promise<UserProfileResponse> {
-    return this.request<UserProfileResponse>('/profiles/profile/', {}, true);
+    const profile = await this.getComprehensiveProfile();
+
+    // Map comprehensive profile back to legacy format
+    return {
+      message: "Profile retrieved successfully",
+      profile: {
+        id: profile.id,
+        user: profile.user,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        phone_number: profile.phone_number,
+        date_of_birth: profile.date_of_birth,
+        profile_picture: profile.profile_picture,
+        bio: profile.bio,
+        location: profile.location,
+        fitness_goal: profile.fitness_goal,
+        height: profile.height,
+        weight: profile.weight,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at
+      }
+    };
+  }
+
+  // Contact Information Specific Methods
+  async getContactInfo(): Promise<{ phone_number: string | null; email: string }> {
+    const profile = await this.getComprehensiveProfile();
+    return {
+      phone_number: profile.phone_number,
+      email: profile.email || '', // Email comes from user model
+    };
+  }
+
+  async updateContactInfo(phoneNumber: string): Promise<{ message: string; contact_info: { phone_number: string; email: string } }> {
+    await this.updateComprehensiveProfile({ phone_number: phoneNumber });
+    const contactInfo = await this.getContactInfo();
+    return {
+      message: 'Contact information updated successfully',
+      contact_info: {
+        phone_number: contactInfo.phone_number || 'NA',
+        email: contactInfo.email
+      }
+    };
   }
 
   async uploadProfilePicture(formData: FormData): Promise<{ message: string; profile_picture_url: string }> {

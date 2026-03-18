@@ -38,8 +38,32 @@ export class AIService {
       const response = await apiService.getHealthMetrics();
       console.log('✅ Health metrics retrieved:', response);
       return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to fetch health metrics:', error);
+
+      // If no health metrics exist, create default ones
+      if (error.message?.includes('No HealthMetrics matches the given query')) {
+        console.log('📝 No health metrics found, creating default metrics...');
+        try {
+          const defaultMetrics: HealthMetricsData = {
+            height: 170,
+            weight: 70,
+            fitness_goal: 'maintenance',
+            activity_level: 'moderate',
+            dietary_preferences: {},
+            allergies: [],
+            target_weight: 70
+          };
+
+          const response = await apiService.createOrUpdateHealthMetrics(defaultMetrics);
+          console.log('✅ Default health metrics created:', response);
+          return response;
+        } catch (createError) {
+          console.error('❌ Failed to create default health metrics:', createError);
+          throw error; // Throw original error if creation fails
+        }
+      }
+
       throw error;
     }
   }

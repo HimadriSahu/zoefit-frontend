@@ -85,16 +85,16 @@ const WorkoutPreferencesScreen = () => {
     if (selectedWorkoutType) {
       setWorkoutTypePreference(selectedWorkoutType as 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed');
     }
-    
+
     console.log('Selected difficulty:', selectedDifficulty);
     console.log('Selected workout type:', selectedWorkoutType);
-    
-    // Navigate to progress tracking setup
-    router.push('/onboarding/progress-setup');
+
+    // Navigate to contact information
+    router.push('/onboarding/contact-info' as any);
   };
 
   const handleSkip = () => {
-    router.push('/onboarding/progress-setup');
+    router.push('/onboarding/contact-info' as any);
   };
 
   return (
@@ -115,9 +115,9 @@ const WorkoutPreferencesScreen = () => {
 
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '85%', backgroundColor: theme.primary }]} />
+            <View style={[styles.progressFill, { width: '100%', backgroundColor: theme.primary }]} />
           </View>
-          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 8.5 of 10</Text>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 9 of 9</Text>
         </View>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -167,7 +167,7 @@ const WorkoutPreferencesScreen = () => {
                       </Text>
                     </View>
                   </View>
-                  
+
                   <View style={styles.examplesContainer}>
                     <Text style={[
                       styles.examplesTitle,
@@ -228,7 +228,7 @@ const WorkoutPreferencesScreen = () => {
                       </Text>
                     </View>
                   </View>
-                  
+
                   <View style={styles.benefitsContainer}>
                     <Text style={[
                       styles.benefitsTitle,
@@ -260,7 +260,7 @@ const WorkoutPreferencesScreen = () => {
           >
             <Text style={[styles.skipButtonText, { color: theme.textSecondary }]}>Skip</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.continueButton, { backgroundColor: theme.primary }]}
             onPress={handleContinue}

@@ -55,7 +55,7 @@ const ActivityLevelScreen = () => {
     // Store activity level in onboarding context
     setActivityLevel(level as 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active');
     console.log('Selected activity level:', level);
-    router.push('/onboarding/equipment');
+    router.push('/onboarding/dietary-preferences');
   };
 
   return (
@@ -76,9 +76,9 @@ const ActivityLevelScreen = () => {
 
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '60%', backgroundColor: theme.primary }]} />
+            <View style={[styles.progressFill, { width: '66%', backgroundColor: theme.primary }]} />
           </View>
-          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 6 of 10</Text>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 6 of 9</Text>
         </View>
 
         <View style={styles.content}>

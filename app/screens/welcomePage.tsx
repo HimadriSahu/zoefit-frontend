@@ -1,17 +1,63 @@
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { authService } from '../../services/auth';
 
 export default function WelcomePage() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuthAndNavigate = async () => {
+      try {
+        // Check if user is authenticated
+        const isAuthenticated = await authService.isAuthenticated();
+
+        if (isAuthenticated) {
+          // User is authenticated, navigate to home
+          router.replace('/Zoefit/home');
+        } else {
+          // User is not authenticated, navigate to login
+          router.replace('/LoginScreen');
+        }
+      } catch (error) {
+        console.error('❌ Auth check failed:', error);
+        // On error, default to login screen
+        router.replace('/LoginScreen');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthAndNavigate();
+  }, [router]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#10b981', '#059669', '#047857']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientBackground}
+        >
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.loadingText}>Loading...</Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -42,8 +88,27 @@ export default function WelcomePage() {
             onPress={() => router.replace('/Zoefit/home')}
           >
             <Text style={styles.buttonText}>Start Your Journey</Text>
-            <Text style={styles.arrow}>{'→'}</Text>
+            {/* <Text style={styles.arrow}>{'→'}</Text> */}
           </TouchableOpacity>
+
+          {/* Manual Navigation Options */}
+          <View style={styles.manualNavContainer}>
+            <Text style={styles.manualNavText}>Or navigate manually:</Text>
+            <View style={styles.manualNavButtons}>
+              <TouchableOpacity
+                style={[styles.manualNavButton, styles.loginButton]}
+                onPress={() => router.replace('/LoginScreen')}
+              >
+                <Text style={styles.manualNavButtonText}>Login</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.manualNavButton, styles.signupButton]}
+                onPress={() => router.replace('/SignupScreen')}
+              >
+                <Text style={styles.manualNavButtonText}>Signup</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </LinearGradient>
     </SafeAreaView>
@@ -125,5 +190,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     fontWeight: 'bold',
     fontSize: 18,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  loadingText: {
+    color: '#fff',
+    marginTop: 20,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+
+  manualNavContainer: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+
+  manualNavText: {
+    color: '#6b7280',
+    fontSize: 14,
+    marginBottom: 10,
+  },
+
+  manualNavButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  manualNavButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 15,
+  },
+
+  loginButton: {
+    backgroundColor: '#3b82f6',
+  },
+
+  signupButton: {
+    backgroundColor: '#10b981',
+  },
+
+  manualNavButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

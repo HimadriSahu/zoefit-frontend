@@ -53,12 +53,12 @@ const ProgressSetupScreen = () => {
     console.log('Body fat %:', bodyFat);
     console.log('Muscle mass (kg):', muscleMass);
 
-    // Navigate to final onboarding step
-    router.push('/onboarding/personalizing');
+    // Navigate to contact information
+    router.push('/onboarding/contact-info' as any);
   };
 
   const handleSkip = () => {
-    router.push('/onboarding/personalizing');
+    router.push('/onboarding/contact-info' as any);
   };
 
   if (hasAdvancedMetrics === null) {
@@ -80,9 +80,9 @@ const ProgressSetupScreen = () => {
 
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '95%', backgroundColor: theme.primary }]} />
+              <View style={[styles.progressFill, { width: '100%', backgroundColor: theme.primary }]} />
             </View>
-            <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 9.5 of 10</Text>
+            <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 9 of 9</Text>
           </View>
 
           <View style={styles.content}>
@@ -150,9 +150,9 @@ const ProgressSetupScreen = () => {
 
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '95%', backgroundColor: theme.primary }]} />
+            <View style={[styles.progressFill, { width: '100%', backgroundColor: theme.primary }]} />
           </View>
-          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 9.5 of 10</Text>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 9 of 9</Text>
         </View>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>

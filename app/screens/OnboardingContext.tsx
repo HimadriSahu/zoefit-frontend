@@ -17,6 +17,10 @@ export interface OnboardingData {
   profilePicture: string | null;
   bio: string | null;
   location: string | null;
+  // Contact Information fields
+  contactInfo: {
+    phone: string;
+  } | null;
   // Health Metrics fields
   activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null;
   dietaryPreferences: Record<string, any> | null;
@@ -24,7 +28,6 @@ export interface OnboardingData {
   allergies: string[] | null;
   targetWeight: number | null;
   // Workout Plan fields
-  equipmentNeeded: string[] | null;
   difficultyLevel: 'beginner' | 'intermediate' | 'advanced' | null;
   workoutTypePreference: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed' | null;
   // Progress Tracking fields
@@ -45,6 +48,8 @@ const defaultData: OnboardingData = {
   profilePicture: null,
   bio: null,
   location: null,
+  // Contact Information fields
+  contactInfo: null,
   // Health Metrics fields
   activityLevel: null,
   dietaryPreferences: null,
@@ -52,7 +57,6 @@ const defaultData: OnboardingData = {
   allergies: null,
   targetWeight: null,
   // Workout Plan fields
-  equipmentNeeded: null,
   difficultyLevel: null,
   workoutTypePreference: null,
   // Progress Tracking fields
@@ -74,6 +78,8 @@ interface OnboardingContextType {
   setProfilePicture: (p: string) => void;
   setBio: (b: string) => void;
   setLocation: (l: string) => void;
+  // Contact Information setters
+  setContactInfo: (c: OnboardingData['contactInfo']) => void;
   // Health Metrics setters
   setActivityLevel: (a: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active') => void;
   setDietaryPreferences: (d: Record<string, any>) => void;
@@ -81,7 +87,6 @@ interface OnboardingContextType {
   setAllergies: (a: string[]) => void;
   setTargetWeight: (t: number) => void;
   // Workout Plan setters
-  setEquipmentNeeded: (e: string[]) => void;
   setDifficultyLevel: (d: 'beginner' | 'intermediate' | 'advanced') => void;
   setWorkoutTypePreference: (w: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed') => void;
   // Progress Tracking setters
@@ -147,6 +152,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const setProfilePicture = (profilePicture: string) => setData((p) => ({ ...p, profilePicture }));
   const setBio = (bio: string) => setData((p) => ({ ...p, bio }));
   const setLocation = (location: string) => setData((p) => ({ ...p, location }));
+  // Contact Information setters
+  const setContactInfo = (contactInfo: OnboardingData['contactInfo']) => setData((p) => ({ ...p, contactInfo }));
   // Health Metrics setters
   const setActivityLevel = (activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active') => setData((p) => ({ ...p, activityLevel }));
   const setDietaryPreferences = (dietaryPreferences: Record<string, any>) => setData((p) => ({ ...p, dietaryPreferences }));
@@ -154,7 +161,6 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const setAllergies = (allergies: string[]) => setData((p) => ({ ...p, allergies }));
   const setTargetWeight = (targetWeight: number) => setData((p) => ({ ...p, targetWeight }));
   // Workout Plan setters
-  const setEquipmentNeeded = (equipmentNeeded: string[]) => setData((p) => ({ ...p, equipmentNeeded }));
   const setDifficultyLevel = (difficultyLevel: 'beginner' | 'intermediate' | 'advanced') => setData((p) => ({ ...p, difficultyLevel }));
   const setWorkoutTypePreference = (workoutTypePreference: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed') => setData((p) => ({ ...p, workoutTypePreference }));
   // Progress Tracking setters
@@ -197,6 +203,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         setProfilePicture,
         setBio,
         setLocation,
+        // Contact Information setters
+        setContactInfo,
         // Health Metrics setters
         setActivityLevel,
         setDietaryPreferences,
@@ -204,7 +212,6 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         setAllergies,
         setTargetWeight,
         // Workout Plan setters
-        setEquipmentNeeded,
         setDifficultyLevel,
         setWorkoutTypePreference,
         // Progress Tracking setters

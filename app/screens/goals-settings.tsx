@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useOnboarding } from './OnboardingContext';
+import { useOnboarding, NutrioGoal } from './OnboardingContext';
 import { useTheme } from './ThemeContext';
 import { apiService, HealthMetricsData } from '../../services/api';
 import { authService } from '../../services/auth';
@@ -22,7 +22,7 @@ const GoalsSettingsScreen = () => {
   const router = useRouter();
   const { data, setGoal, setTargetWeight, setActivityLevel } = useOnboarding();
   const { theme } = useTheme();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -59,8 +59,35 @@ const GoalsSettingsScreen = () => {
       // Load current health metrics from backend
       const response = await apiService.getHealthMetrics();
       console.log('Current goals loaded:', response);
+
+      // Update form data with loaded metrics
+      if (response?.metrics) {
+        // Map backend goal values to frontend NutrioGoal types
+        type NonNullableNutrioGoal = Exclude<NutrioGoal, null>;
+        const goalMap: Record<string, NonNullableNutrioGoal> = {
+          'weight_loss': 'lose_weight',
+          'muscle_gain': 'gain_muscle',
+          'maintenance': 'maintain',
+          'endurance': 'eat_healthier',
+          'strength': 'gain_muscle'
+        };
+
+        const backendGoal = response.metrics.fitness_goal;
+        const frontendGoal = goalMap[backendGoal] || 'maintain';
+
+        setGoal(frontendGoal);
+        setActivityLevel(response.metrics.activity_level as 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' || 'moderate');
+        // Note: target_weight is not in the current API response structure
+      }
     } catch (error) {
-      console.warn('Could not load current goals:', error);
+      if (error instanceof Error && error.message.includes('No HealthMetrics matches')) {
+        console.log('User has not completed onboarding yet - using defaults');
+        // Set default values for users who haven't completed onboarding
+        setGoal('maintain');
+        setActivityLevel('moderate');
+      } else {
+        console.warn('Could not load current goals:', error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +102,17 @@ const GoalsSettingsScreen = () => {
         return;
       }
 
+      // Map frontend goal values to backend format
+      type NonNullableNutrioGoal = Exclude<NutrioGoal, null>;
+      const goalMap: Record<NonNullableNutrioGoal, 'weight_loss' | 'muscle_gain' | 'maintenance' | 'endurance' | 'strength'> = {
+        'lose_weight': 'weight_loss',
+        'gain_muscle': 'muscle_gain',
+        'maintain': 'maintenance',
+        'eat_healthier': 'endurance'
+      };
+
       const goalsData: HealthMetricsData = {
-        fitness_goal: data.goal as any || 'maintenance',
+        fitness_goal: data.goal ? goalMap[data.goal] : 'maintenance',
         activity_level: data.activityLevel || 'moderate',
         target_weight: data.targetWeight || undefined,
       };
@@ -287,7 +323,7 @@ const GoalsSettingsScreen = () => {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Target Metrics</Text>
-          
+
           <TouchableOpacity
             style={[styles.metricCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}
             onPress={() => handleEditStart('targetWeight', data.targetWeight)}

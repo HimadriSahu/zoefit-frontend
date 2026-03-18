@@ -6,14 +6,18 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authService } from '../../services/auth';
+import { apiService } from '../../services/api';
+import { useOnboarding } from '../screens/OnboardingContext';
 
 export default function PersonalizingScreen() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
+  const { data: onboardingData } = useOnboarding();
 
   const steps = [
     'Analyzing your profile...',
@@ -39,7 +43,89 @@ export default function PersonalizingScreen() {
   }, [steps.length]);
 
   const handleFinish = async () => {
+    try {
+      // Step 1: Submit comprehensive onboarding data to backend
+      const comprehensiveOnboardingData = {
+        // Basic demographics
+        gender: onboardingData.gender,
+        date_of_birth: onboardingData.birthday,
+        height: onboardingData.heightCm,
+        weight: onboardingData.weightKg,
+
+        // Goals and preferences
+        fitness_goal: onboardingData.goal,
+        target_weight: onboardingData.targetWeight,
+        activity_level: onboardingData.activityLevel,
+
+        // Schedule
+        breakfast_time: onboardingData.breakfastTime,
+        dinner_time: onboardingData.dinnerTime,
+
+        // Contact and profile
+        phone_number: onboardingData.phoneNumber,
+        bio: onboardingData.bio,
+        location: onboardingData.location,
+
+        // Health and dietary
+        dietary_preferences: onboardingData.dietaryPreferences,
+        medical_conditions: onboardingData.medicalConditions,
+        allergies: onboardingData.allergies,
+
+        // Workout preferences
+        difficulty_level: onboardingData.difficultyLevel,
+        workout_type_preference: onboardingData.workoutTypePreference,
+
+        // Progress tracking
+        body_fat_percentage: onboardingData.bodyFatPercentage,
+        muscle_mass: onboardingData.muscleMass,
+      };
+
+      await apiService.submitOnboardingData(comprehensiveOnboardingData);
+
+      // Step 2: Create health metrics with real user data
+      const healthMetricsData = {
+        height: onboardingData.heightCm || 170,
+        weight: onboardingData.weightKg || 70,
+        fitness_goal: (onboardingData.goal as 'weight_loss' | 'muscle_gain' | 'maintenance' | 'endurance' | 'strength') || 'maintenance',
+        activity_level: onboardingData.activityLevel || 'moderate',
+        target_weight: onboardingData.targetWeight || onboardingData.weightKg || 70,
+      };
+
+      await apiService.createOrUpdateHealthMetrics(healthMetricsData);
+
+      // Step 3: Update comprehensive profile with additional data
+      const profileUpdateData = {
+        first_name: '', // Will be filled from user registration
+        last_name: '',
+        phone_number: onboardingData.phoneNumber,
+        bio: onboardingData.bio,
+        location: onboardingData.location,
+        fitness_goal: onboardingData.goal,
+        height: onboardingData.heightCm,
+        weight: onboardingData.weightKg,
+      };
+
+      await apiService.updateComprehensiveProfile(profileUpdateData);
+
+    } catch (error) {
+      console.error('❌ Onboarding submission failed:', error);
+      Alert.alert(
+        'Setup Incomplete',
+        'There was an error setting up your profile. Please try again.',
+        [{ text: 'Retry', onPress: () => router.replace('/onboarding/personalizing') }]
+      );
+    }
+
+    // Mark onboarding as completed locally
     await authService.setOnboardingCompleted(true);
+
+    // Show success confirmation
+    Alert.alert(
+      'Setup Complete!',
+      'Your profile has been successfully set up. Welcome to ZoeFit!',
+      [{ text: 'Get Started', onPress: () => router.replace('/screens/welcomePage') }]
+    );
+
     router.replace('/screens/welcomePage');
   };
 
@@ -62,7 +148,7 @@ export default function PersonalizingScreen() {
         ) : (
           <>
             <Text style={styles.doneEmoji}>✨</Text>
-            <Text style={styles.doneTitle}>{"You're all set!"}</Text>
+            <Text style={styles.doneTitle}>You're All Set!</Text>
             <Text style={styles.doneSubtitle}>
               Your Nutrio experience is ready. {"We've"} customized meal suggestions, reminders, and
               goals based on your profile.

@@ -51,9 +51,9 @@ const ProfileScreen = () => {
     { id: '1', name: 'First Workout', icon: '🏃‍♂️', earned: true },
     { id: '2', name: '7 Day Streak', icon: '🔥', earned: true },
     { id: '3', name: '1000 Calories', icon: '💪', earned: true },
-    { id: '4', name: 'Early Bird', icon: '🌅', earned: false },
-    { id: '5', name: 'Marathon Ready', icon: '🏅', earned: false },
-    { id: '6', name: 'Nutrition Master', icon: '🥗', earned: false },
+    // { id: '4', name: 'Early Bird', icon: '🌅', earned: false },
+    // { id: '5', name: 'Marathon Ready', icon: '🏅', earned: false },
+    // { id: '6', name: 'Nutrition Master', icon: '🥗', earned: false },
   ];
 
   const menuItems = [
@@ -86,7 +86,7 @@ const ProfileScreen = () => {
         </LinearGradient>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.statsContainer}>
+          {/* <View style={styles.statsContainer}>
             <Text style={styles.sectionTitle}>Your Progress</Text>
             <View style={[styles.statsContainer, { backgroundColor: theme.cardBackground }]}>
               <View style={[styles.statsGrid, { backgroundColor: theme.cardBackground }]}>
@@ -104,9 +104,9 @@ const ProfileScreen = () => {
                 </View>
               </View>
             </View>
-          </View>
+          </View> */}
 
-          <View style={styles.levelContainer}>
+          {/* <View style={styles.levelContainer}>
             <Text style={styles.sectionTitle}>Fitness Level</Text>
             <View style={styles.levelCard}>
               <Text style={styles.levelText}>{profileData.level}</Text>
@@ -118,9 +118,9 @@ const ProfileScreen = () => {
                 <Text style={styles.levelProgressText}>65% to Advanced</Text>
               </View>
             </View>
-          </View>
+          </View> */}
 
-          <View style={styles.achievementsContainer}>
+          {/* <View style={styles.achievementsContainer}>
             <Text style={styles.sectionTitle}>Achievements</Text>
             <View style={styles.achievementsGrid}>
               {achievements.map((achievement) => (
@@ -137,7 +137,7 @@ const ProfileScreen = () => {
                 </View>
               ))}
             </View>
-          </View>
+          </View> */}
 
           <View style={styles.menuContainer}>
             <Text style={styles.sectionTitle}>Account</Text>

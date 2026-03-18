@@ -43,9 +43,73 @@ const WorkoutHistoryScreen = () => {
         return;
       }
 
-      const response = await apiService.getWorkoutPlans();
-      setWorkouts(response.workout_plans || []);
-      console.log('Workout history loaded:', response.workout_plans);
+      // Fetch from frontend API instead of AI API (filter for last 3 months)
+      const response = await apiService.getWorkoutSessions();
+      console.log('Raw workout sessions:', response);
+
+      // Handle empty results gracefully
+      if (!response.results || response.results.length === 0) {
+        setWorkouts([]);
+        console.log('No workout sessions found');
+        return;
+      }
+
+      // Filter workouts from the last 3 months
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+      const recentWorkouts = response.results.filter((session: any) => {
+        const sessionDate = new Date(session.created_at);
+        return sessionDate >= threeMonthsAgo;
+      });
+
+      console.log(`Filtered ${recentWorkouts.length} workouts from last 3 months`);
+
+      // Transform frontend workout sessions to match WorkoutPlan interface
+      const transformedWorkouts = recentWorkouts.map((session: any) => {
+        // Extract workout type from exercises or exercise_logs
+        let workoutType = 'strength';
+        const exercisesData = session.exercises_completed || session.exercise_logs || [];
+
+        if (exercisesData.length > 0) {
+          const firstExercise = exercisesData[0];
+          // Handle different data structures
+          const exercise = firstExercise.exercise || firstExercise;
+          if (exercise?.category) {
+            const category = exercise.category.toLowerCase();
+            if (category.includes('cardio')) workoutType = 'cardio';
+            else if (category.includes('hiit')) workoutType = 'hiit';
+            else if (category.includes('flexibility') || category.includes('stretch')) workoutType = 'flexibility';
+            else if (category.includes('strength') || category.includes('weights')) workoutType = 'strength';
+          }
+        }
+
+        // Calculate difficulty based on duration and exercises
+        let difficulty = 'beginner';
+        const duration = session.duration_minutes || 2;
+        const exerciseCount = exercisesData.length;
+
+        if (duration >= 30 || exerciseCount >= 8) difficulty = 'advanced';
+        else if (duration >= 15 || exerciseCount >= 5) difficulty = 'intermediate';
+
+        return {
+          id: session.id,
+          day: 1,
+          exercises: exercisesData,
+          workout_type: session.workout_plan?.workout_type || workoutType,
+          estimated_duration: duration,
+          difficulty_level: session.difficulty_rating || difficulty,
+          intensity_score: Math.min(10, Math.max(1, Math.round((duration / 10) + (exerciseCount / 2)))),
+          equipment_needed: [],
+          completed: session.completed || (session.end_time !== null),
+          completion_time: session.end_time,
+          user_rating: session.user_rating,
+          created_at: session.created_at
+        };
+      });
+
+      setWorkouts(transformedWorkouts);
+      console.log('Workout history loaded:', transformedWorkouts);
     } catch (error) {
       console.error('Failed to load workout history:', error);
     } finally {
@@ -69,12 +133,12 @@ const WorkoutHistoryScreen = () => {
       await apiService.updateWorkoutCompletion({
         workout_plan_id: workoutId,
         completed: true,
-        rating: rating,
+        user_rating: rating,
       });
 
       // Update local state
       setWorkouts(prev => prev.map(w =>
-        w.id === workoutId ? { ...w, user_rating: rating } : w
+        w.id === workoutId ? { ...w, user_rating: rating, completed: true } : w
       ));
 
       Alert.alert('Success', 'Workout rated successfully!');
@@ -327,7 +391,10 @@ const WorkoutHistoryScreen = () => {
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backButton}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Workout History</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Workout History</Text>
+          <Text style={styles.headerSubtitle}>Last 3 Months</Text>
+        </View>
         <View style={{ width: 60 }} />
       </LinearGradient>
 
@@ -353,11 +420,8 @@ const WorkoutHistoryScreen = () => {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.workoutsContainer}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Your Workouts ({workouts.length})
-            </Text>
-            {workouts.map(renderWorkoutCard)}
+          <View style={styles.workoutList}>
+            {workouts.map(workout => renderWorkoutCard(workout))}
           </View>
         )}
       </ScrollView>
@@ -407,10 +471,22 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
+  headerTitleContainer: {
+    alignItems: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.8,
+    marginTop: 2,
+  },
   scrollView: {
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 20,
+  },
+  workoutList: {
+    gap: 16,
   },
   workoutsContainer: {
     gap: 16,

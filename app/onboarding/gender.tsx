@@ -34,7 +34,7 @@ export default function GenderScreen() {
           <Text style={styles.headerTitle}>Tell us about yourself</Text>
           <Text style={styles.headerSubtitle}>Step 1 of 6</Text>
         </LinearGradient>
-        
+
         <View style={styles.container}>
           <View style={styles.cardGlass}>
             <Text style={styles.title}>{"What's your gender?"}</Text>
@@ -60,8 +60,8 @@ export default function GenderScreen() {
               onPress={handleContinue}
               disabled={!data.gender}
             >
-              <LinearGradient 
-                colors={!data.gender ? ['#a5d6a7', '#81c784'] : ['#43e97b', '#2e7d32']} 
+              <LinearGradient
+                colors={!data.gender ? ['#a5d6a7', '#81c784'] : ['#43e97b', '#2e7d32']}
                 style={styles.buttonGradient}
               >
                 <Text style={styles.buttonText}>Continue</Text>
@@ -193,6 +193,6 @@ const styles = StyleSheet.create({
     textShadowColor: '#2e7d32',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
-    
+
   },
 });

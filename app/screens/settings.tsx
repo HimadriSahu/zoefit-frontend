@@ -180,7 +180,7 @@ const SettingsScreen = () => {
                 thumbColor={isDarkMode ? '#fff' : '#9ca3af'}
               />
             </View>
-            <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]}>
+            {/* <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]}>
               <Text style={styles.menuIcon}>🎨</Text>
               <Text style={[styles.menuTitle, { color: theme.text }]}>Theme Color</Text>
               <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
@@ -189,7 +189,7 @@ const SettingsScreen = () => {
               <Text style={styles.menuIcon}>📝</Text>
               <Text style={[styles.menuTitle, { color: theme.text }]}>Font Size</Text>
               <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
           {/* App Preferences */}
@@ -232,17 +232,27 @@ const SettingsScreen = () => {
           {/* Account Management */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Account Management</Text>
-           
+            {/* <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => router.push('/screens/personal-info')}>
+              <Text style={styles.menuIcon}>👤</Text>
+              <Text style={[styles.menuTitle, { color: theme.text }]}>Personal Information</Text>
+              <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => router.push('/screens/goals-settings')}>
               <Text style={styles.menuIcon}>🎯</Text>
               <Text style={[styles.menuTitle, { color: theme.text }]}>Goals Settings</Text>
               <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => router.push('/screens/workout-history')}>
+            </TouchableOpacity> */}
+            {/* <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => router.push('/screens/achievements')}>
+              <Text style={styles.menuIcon}>🏆</Text>
+              <Text style={[styles.menuTitle, { color: theme.text }]}>Achievements</Text>
+              <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
+            </TouchableOpacity> */}
+
+            {/* <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => router.push('/screens/workout-history')}>
               <Text style={styles.menuIcon}>📋</Text>
               <Text style={[styles.menuTitle, { color: theme.text }]}>Workout History</Text>
               <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]}>
               <Text style={styles.menuIcon}>🔐</Text>
               <Text style={[styles.menuTitle, { color: theme.text }]}>Change Password</Text>
@@ -253,11 +263,15 @@ const SettingsScreen = () => {
               <Text style={[styles.menuTitle, { color: theme.text }]}>Email Preferences</Text>
               <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
             </TouchableOpacity>
-          
+            <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]}>
+              <Text style={styles.menuIcon}>🔗</Text>
+              <Text style={[styles.menuTitle, { color: theme.text }]}>Connected Apps</Text>
+              <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Data & Storage */}
-          <View style={styles.section}>
+          {/* <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Data & Storage</Text>
             <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={handleExportData}>
               <Text style={styles.menuIcon}>📤</Text>
@@ -274,16 +288,16 @@ const SettingsScreen = () => {
               <Text style={[styles.menuTitle, { color: theme.text }]}>Backup Settings</Text>
               <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
             </TouchableOpacity>
-          </View>
+          </View> */}
 
           {/* Support */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Support</Text>
-            <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => router.push('/screens/help-support')}>
+            {/* <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => router.push('/screens/help-support')}>
               <Text style={styles.menuIcon}>❓</Text>
               <Text style={[styles.menuTitle, { color: theme.text }]}>Help & Support</Text>
               <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={() => Linking.openURL('https://zoefit.com/privacy')}>
               <Text style={styles.menuIcon}>🔒</Text>
               <Text style={[styles.menuTitle, { color: theme.text }]}>Privacy Policy</Text>
@@ -302,7 +316,7 @@ const SettingsScreen = () => {
           </View>
 
           {/* Advanced */}
-          <View style={styles.section}>
+          {/* <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Advanced</Text>
             <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.menuItemBackground, borderColor: theme.border }]} onPress={handleReset}>
               <Text style={styles.menuIcon}>♻️</Text>
@@ -319,7 +333,7 @@ const SettingsScreen = () => {
               <Text style={[styles.menuTitle, { color: theme.text }]}>Analytics & Insights</Text>
               <Text style={[styles.menuArrow, { color: theme.textSecondary }]}>›</Text>
             </TouchableOpacity>
-          </View>
+          </View> */}
 
           {/* Danger Zone */}
           <View style={styles.section}>
@@ -355,8 +369,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     shadowColor: '#10b981',
@@ -371,7 +385,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headingTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
     textShadowColor: '#047857',

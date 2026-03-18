@@ -81,14 +81,25 @@ class AuthService {
       const refreshToken = await this.getRefreshToken();
       const accessToken = await this.getAccessToken();
       if (refreshToken && accessToken) {
-        await apiService.logout(refreshToken, accessToken);
+        try {
+          await apiService.logout(refreshToken, accessToken);
+        } catch (logoutError: any) {
+          // Handle specific logout errors
+          if (logoutError.message?.includes('Token is blacklisted') ||
+            logoutError.message?.includes('no longer valid')) {
+            console.log('🔑 Token already blacklisted, proceeding with local logout');
+          } else {
+            console.warn('Server logout failed:', logoutError);
+          }
+        }
       }
     } catch (error) {
       // Continue with local logout even if server logout fails
       console.warn('Server logout failed:', error);
     } finally {
       // Always clear local storage
-      await this.clearStorage();
+      await this.clearAllStorage();
+      console.log('✅ Local logout completed');
     }
   }
 
@@ -136,7 +147,7 @@ class AuthService {
     } catch (error) {
       console.error('Token refresh failed:', error);
       // If refresh fails, clear storage and force re-login
-      await this.clearStorage();
+      await this.clearAllStorage();
       return null;
     }
   }
@@ -211,7 +222,11 @@ class AuthService {
     }
   }
 
-  private async clearStorage(): Promise<void> {
+  async clearStorage(): Promise<void> {
+    await this.clearAllStorage();
+  }
+
+  private async clearAllStorage(): Promise<void> {
     try {
       await AsyncStorage.multiRemove([
         ACCESS_TOKEN_KEY,

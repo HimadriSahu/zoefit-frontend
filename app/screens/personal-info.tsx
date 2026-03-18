@@ -27,13 +27,13 @@ import { apiService, UserProfileData, HealthMetricsData } from '../../services/a
 const PersonalInfoScreen = () => {
   const router = useRouter();
   const { theme } = useTheme();
-  const { data, setGender, setBirthday, setHeightCm, setWeightKg, setGoal, setBreakfastTime, setDinnerTime, setPhoneNumber, setBio, setLocation, setTargetWeight } =
+  const { data, setGender, setBirthday, setHeightCm, setWeightKg, setGoal, setBreakfastTime, setDinnerTime, setPhoneNumber, setBio, setLocation, setTargetWeight, setActivityLevel, setDietaryPreferences, setMedicalConditions, setAllergies, setDifficultyLevel, setWorkoutTypePreference } =
     useOnboarding();
 
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<'gender' | 'goal' | null>(null);
+  const [modalType, setModalType] = useState<'gender' | 'goal' | 'activityLevel' | 'dietaryPreferences' | 'medicalConditions' | 'allergies' | 'difficultyLevel' | 'workoutTypePreference' | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +41,33 @@ const PersonalInfoScreen = () => {
 
   const genderOptions: Gender[] = ['male', 'female', 'other'];
   const goalOptions: NutrioGoal[] = ['lose_weight', 'maintain', 'gain_muscle', 'eat_healthier'];
+  const activityLevelOptions: ('sedentary' | 'light' | 'moderate' | 'active' | 'very_active')[] = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
+  const difficultyLevelOptions: ('beginner' | 'intermediate' | 'advanced')[] = ['beginner', 'intermediate', 'advanced'];
+  const workoutTypeOptions: ('strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed')[] = ['strength', 'cardio', 'hiit', 'flexibility', 'mixed'];
+
+  // Dietary preferences options (common ones)
+  const dietaryOptions = [
+    { key: 'vegetarian', label: 'Vegetarian' },
+    { key: 'vegan', label: 'Vegan' },
+    { key: 'gluten_free', label: 'Gluten-Free' },
+    { key: 'dairy_free', label: 'Dairy-Free' },
+    { key: 'keto', label: 'Keto' },
+    { key: 'paleo', label: 'Paleo' },
+    { key: 'mediterranean', label: 'Mediterranean' },
+    { key: 'low_carb', label: 'Low Carb' },
+    { key: 'low_fat', label: 'Low Fat' },
+    { key: 'high_protein', label: 'High Protein' },
+  ];
+
+  // Common allergies and medical conditions options
+  const commonAllergies = [
+    'Peanuts', 'Tree nuts', 'Milk', 'Eggs', 'Wheat', 'Soy', 'Fish', 'Shellfish', 'Sesame', 'Gluten'
+  ];
+
+  const commonMedicalConditions = [
+    'Diabetes', 'Hypertension', 'Heart disease', 'Asthma', 'Arthritis', 'Osteoporosis', 'Kidney disease', 'Liver disease', 'Thyroid issues', 'Celiac disease'
+  ];
+
 
   // Shared goal mapping for backend API
   const goalMap: { [key: string]: NutrioGoal } = {
@@ -86,10 +113,38 @@ const PersonalInfoScreen = () => {
         setGoal(goalMap[response.metrics.fitness_goal]);
       }
 
+      if (response.metrics.activity_level) {
+        const validActivityLevels = ['sedentary', 'light', 'moderate', 'active', 'very_active'] as const;
+        const activityLevel = response.metrics.activity_level;
+        if (validActivityLevels.includes(activityLevel as any)) {
+          setActivityLevel(activityLevel as 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active');
+        }
+      }
+
+      if (response.metrics.dietary_preferences) {
+        setDietaryPreferences(response.metrics.dietary_preferences);
+      }
+
+      if (response.metrics.medical_conditions) {
+        setMedicalConditions(response.metrics.medical_conditions);
+      }
+
+      if (response.metrics.allergies) {
+        setAllergies(response.metrics.allergies);
+      }
+
+      if (response.metrics.target_weight) {
+        setTargetWeight(response.metrics.target_weight);
+      }
+
       setHealthMetricsLoaded(true);
       console.log('✅ Health metrics loaded successfully');
     } catch (error) {
-      console.warn('⚠️ Could not load health metrics:', error);
+      if (error instanceof Error && error.message.includes('No HealthMetrics matches')) {
+        console.log('User has not completed onboarding yet - using defaults');
+      } else {
+        console.warn('⚠️ Could not load health metrics:', error);
+      }
       // Don't show error to user on initial load, just continue with local data
     } finally {
       setIsLoading(false);
@@ -365,6 +420,12 @@ const PersonalInfoScreen = () => {
       bio: 'Bio',
       location: 'Location',
       targetWeight: 'Target Weight (kg)',
+      activityLevel: 'Activity Level',
+      dietaryPreferences: 'Dietary Preferences',
+      medicalConditions: 'Medical Conditions',
+      allergies: 'Allergies',
+      difficultyLevel: 'Difficulty Level',
+      workoutTypePreference: 'Workout Type Preference',
     };
     return labels[key] || key;
   };
@@ -373,6 +434,19 @@ const PersonalInfoScreen = () => {
     if (!value) return 'Not set';
     if (key === 'gender') return value.charAt(0).toUpperCase() + value.slice(1);
     if (key === 'goal') return value.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+    if (key === 'activityLevel') return value.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+    if (key === 'dietaryPreferences') {
+      if (typeof value === 'object' && value !== null) {
+        const prefs = Object.entries(value).filter(([_, selected]) => selected).map(([diet]) => diet.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()));
+        return prefs.length > 0 ? prefs.join(', ') : 'Not set';
+      }
+      return 'Not set';
+    }
+    if (key === 'medicalConditions' || key === 'allergies') {
+      return Array.isArray(value) && value.length > 0 ? value.join(', ') : 'Not set';
+    }
+    if (key === 'difficultyLevel') return value.charAt(0).toUpperCase() + value.slice(1);
+    if (key === 'workoutTypePreference') return value.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
     return value.toString();
   };
 
@@ -419,38 +493,132 @@ const PersonalInfoScreen = () => {
   );
 
   const renderSelectionModal = () => {
-    const items = modalType === 'gender' ? genderOptions : goalOptions;
-    const onSelect =
-      modalType === 'gender'
-        ? (item: any) => handleGenderSelect(item)
-        : (item: any) => handleGoalSelect(item);
+    let items: any[] = [];
+    let onSelect: (item: any) => void;
+    let getSelectedValue: (item: any) => boolean;
+    let formatItemLabel: (item: any) => string;
+
+    switch (modalType) {
+      case 'gender':
+        items = genderOptions;
+        onSelect = (item: Gender) => handleGenderSelect(item);
+        getSelectedValue = (item: Gender) => data.gender === item;
+        formatItemLabel = (item: Gender) => formatValue('gender', item);
+        break;
+      case 'goal':
+        items = goalOptions;
+        onSelect = (item: NutrioGoal) => handleGoalSelect(item);
+        getSelectedValue = (item: NutrioGoal) => data.goal === item;
+        formatItemLabel = (item: NutrioGoal) => formatValue('goal', item);
+        break;
+      case 'activityLevel':
+        items = activityLevelOptions;
+        onSelect = (item: any) => {
+          setActivityLevel(item);
+          setModalVisible(false);
+          setModalType(null);
+          saveHealthMetricsToBackend();
+        };
+        getSelectedValue = (item: any) => data.activityLevel === item;
+        formatItemLabel = (item: any) => formatValue('activityLevel', item);
+        break;
+      case 'difficultyLevel':
+        items = difficultyLevelOptions;
+        onSelect = (item: any) => {
+          setDifficultyLevel(item);
+          setModalVisible(false);
+          setModalType(null);
+          saveHealthMetricsToBackend();
+        };
+        getSelectedValue = (item: any) => data.difficultyLevel === item;
+        formatItemLabel = (item: any) => formatValue('difficultyLevel', item);
+        break;
+      case 'workoutTypePreference':
+        items = workoutTypeOptions;
+        onSelect = (item: any) => {
+          setWorkoutTypePreference(item);
+          setModalVisible(false);
+          setModalType(null);
+          saveHealthMetricsToBackend();
+        };
+        getSelectedValue = (item: any) => data.workoutTypePreference === item;
+        formatItemLabel = (item: any) => formatValue('workoutTypePreference', item);
+        break;
+      case 'dietaryPreferences':
+        items = dietaryOptions;
+        onSelect = (item: any) => {
+          const currentPrefs = data.dietaryPreferences || {};
+          const updatedPrefs = {
+            ...currentPrefs,
+            [item.key]: !currentPrefs[item.key]
+          };
+          setDietaryPreferences(updatedPrefs);
+        };
+        getSelectedValue = (item: any) => data.dietaryPreferences?.[item.key] || false;
+        formatItemLabel = (item: any) => item.label;
+        break;
+      case 'medicalConditions':
+        items = commonMedicalConditions;
+        onSelect = (item: any) => {
+          const currentConditions = data.medicalConditions || [];
+          const updatedConditions = currentConditions.includes(item)
+            ? currentConditions.filter(c => c !== item)
+            : [...currentConditions, item];
+          setMedicalConditions(updatedConditions);
+        };
+        getSelectedValue = (item: any) => data.medicalConditions?.includes(item) || false;
+        formatItemLabel = (item: any) => item;
+        break;
+      case 'allergies':
+        items = commonAllergies;
+        onSelect = (item: any) => {
+          const currentAllergies = data.allergies || [];
+          const updatedAllergies = currentAllergies.includes(item)
+            ? currentAllergies.filter(a => a !== item)
+            : [...currentAllergies, item];
+          setAllergies(updatedAllergies);
+        };
+        getSelectedValue = (item: any) => data.allergies?.includes(item) || false;
+        formatItemLabel = (item: any) => item;
+        break;
+      default:
+        return null;
+    }
+
+    const isMultiSelect = modalType === 'dietaryPreferences' || modalType === 'medicalConditions' || modalType === 'allergies';
 
     return (
       <Modal visible={modalVisible && modalType !== null} animationType="slide" transparent={true}>
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
           <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Select {modalType === 'gender' ? 'Gender' : 'Goal'}</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Select {formatLabel(modalType)}
+                {isMultiSelect && ' (Tap to select/deselect)'}
+              </Text>
             </View>
 
             <FlatList
               data={items}
-              keyExtractor={(item) => item as string}
+              keyExtractor={(item, index) => isMultiSelect ? item.key || item : item as string}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
                     styles.selectionItem,
                     { backgroundColor: theme.cardBackground, borderColor: theme.border },
-                    (modalType === 'gender' ? data.gender === item : data.goal === item) && { backgroundColor: theme.primary },
+                    getSelectedValue(item) && { backgroundColor: theme.primary },
                   ]}
                   onPress={() => onSelect(item)}
                 >
                   <Text style={[
                     styles.selectionText,
-                    { color: (modalType === 'gender' ? data.gender === item : data.goal === item) ? '#fff' : theme.text }
+                    { color: getSelectedValue(item) ? '#fff' : theme.text }
                   ]}>
-                    {formatValue(modalType === 'gender' ? 'gender' : 'goal', item)}
+                    {formatItemLabel(item)}
                   </Text>
+                  {getSelectedValue(item) && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
                 </TouchableOpacity>
               )}
             />
@@ -460,6 +628,10 @@ const PersonalInfoScreen = () => {
               onPress={() => {
                 setModalVisible(false);
                 setModalType(null);
+                // Save multi-select data when closing
+                if (isMultiSelect) {
+                  saveHealthMetricsToBackend();
+                }
               }}
             >
               <Text style={styles.closeButtonText}>Close</Text>
@@ -594,10 +766,10 @@ const PersonalInfoScreen = () => {
             () => handleEditStart('phoneNumber', data.phoneNumber)
           )}
 
-        
+
         </View>
 
-        
+
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Goals</Text>
@@ -606,6 +778,69 @@ const PersonalInfoScreen = () => {
             formatLabel('targetWeight'),
             data.targetWeight ? `${data.targetWeight} kg` : 'Not set',
             () => handleEditStart('targetWeight', data.targetWeight)
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Health Profile</Text>
+
+          {renderInfoField(
+            formatLabel('activityLevel'),
+            formatValue('activityLevel', data.activityLevel),
+            () => {
+              setModalType('activityLevel');
+              setModalVisible(true);
+            }
+          )}
+
+          {renderInfoField(
+            formatLabel('dietaryPreferences'),
+            formatValue('dietaryPreferences', data.dietaryPreferences),
+            () => {
+              setModalType('dietaryPreferences');
+              setModalVisible(true);
+            }
+          )}
+
+          {renderInfoField(
+            formatLabel('medicalConditions'),
+            formatValue('medicalConditions', data.medicalConditions),
+            () => {
+              setModalType('medicalConditions');
+              setModalVisible(true);
+            }
+          )}
+
+          {renderInfoField(
+            formatLabel('allergies'),
+            formatValue('allergies', data.allergies),
+            () => {
+              setModalType('allergies');
+              setModalVisible(true);
+            }
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Workout Preferences</Text>
+
+
+          {renderInfoField(
+            formatLabel('difficultyLevel'),
+            formatValue('difficultyLevel', data.difficultyLevel),
+            () => {
+              setModalType('difficultyLevel');
+              setModalVisible(true);
+            }
+          )}
+
+          {renderInfoField(
+            formatLabel('workoutTypePreference'),
+            formatValue('workoutTypePreference', data.workoutTypePreference),
+            () => {
+              setModalType('workoutTypePreference');
+              setModalVisible(true);
+            }
           )}
         </View>
 

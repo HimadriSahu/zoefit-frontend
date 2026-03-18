@@ -10,6 +10,9 @@ import {
 	Animated,
 	ActivityIndicator,
 	RefreshControl,
+	TouchableWithoutFeedback,
+	Image,
+	Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,50 +29,119 @@ const HomeScreen = () => {
 	const [isLoading, setIsLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [showMenu, setShowMenu] = useState(false);
+
+	// Side panel animation
+	const slideAnim = useRef(new Animated.Value(-screenWidth)).current;
+
 	const [todayStats, setTodayStats] = useState({
 		calories: 0,
 		steps: 0,
 		minutes: 0
 	});
 	const [todayWorkoutSessions, setTodayWorkoutSessions] = useState<any[]>([]);
+	const [completedWorkoutSessions, setCompletedWorkoutSessions] = useState<any[]>([]);
 	const [aiInsight, setAiInsight] = useState('');
+	const [userData, setUserData] = useState<any>(null);
 
-	// Fetch daily stats from backend
+	// Fetch daily stats from backend (now only for reference)
 	const fetchDailyStats = useCallback(async () => {
-		try {
-			const stats: DailyStats = await apiService.getDailyStats();
-			setTodayStats({
-				calories: stats.calories_burned,
-				steps: stats.estimated_steps,
-				minutes: stats.workout_minutes
-			});
-			console.log('📊 Daily stats updated:', {
-				calories: stats.calories_burned,
-				steps: stats.estimated_steps,
-				minutes: stats.workout_minutes,
-				lastUpdated: stats.last_updated
-			});
-		} catch (error) {
-			console.error('❌ Failed to fetch daily stats:', error);
-			// Keep default values on error (resets to 0)
-			setTodayStats({
-				calories: 0,
-				steps: 0,
-				minutes: 0
-			});
-		}
+		// Skip backend daily stats since we calculate from completed workouts only
+		console.log('📊 Using local calculation from completed workouts only');
+		return;
 	}, []);
 
-	// Fetch today's workout sessions
-	const fetchTodayWorkoutSessions = useCallback(async () => {
+	// Calculate accurate stats from completed workouts only
+	const calculateAccurateStats = useCallback(() => {
+		let totalMinutes = 0;
+		let totalCalories = 0;
+		let totalSteps = 0;
+
+		completedWorkoutSessions.forEach(session => {
+			totalMinutes += session.duration_minutes || 0;
+			totalCalories += session.calories_burned || 0;
+			// Steps are estimated per workout - use a reasonable estimate
+			if (session.duration_minutes && session.duration_minutes > 0) {
+				totalSteps += Math.round(session.duration_minutes * 100); // ~100 steps per minute of workout
+			}
+		});
+
+		return {
+			calories: totalCalories,
+			steps: totalSteps,
+			minutes: totalMinutes
+		};
+	}, [completedWorkoutSessions]);
+
+	// Update stats when completed workouts change
+	useEffect(() => {
+		const accurateStats = calculateAccurateStats();
+		setTodayStats(accurateStats);
+		console.log('📊 Accurate stats from completed workouts:', accurateStats);
+	}, [calculateAccurateStats]);
+
+	// Fetch today's workout sessions with retry logic
+	const fetchTodayWorkoutSessions = useCallback(async (retryCount = 0): Promise<void> => {
+		const maxRetries = 2;
+
 		try {
 			const today = new Date().toISOString().split('T')[0];
-			const sessions = await apiService.getWorkoutSessions(today, today);
-			setTodayWorkoutSessions(sessions.results || []);
-			console.log('🏋️ Today\'s workout sessions loaded:', sessions.results?.length || 0);
-		} catch (error) {
+			// Fetch all workout sessions and filter for today
+			const allSessions = await apiService.getWorkoutSessions();
+			const todaysSessions = allSessions.results.filter((session: any) => {
+				const sessionDate = new Date(session.created_at).toISOString().split('T')[0];
+				return sessionDate === today;
+			});
+			setTodayWorkoutSessions(todaysSessions || []);
+
+			// Filter only completed workouts for accurate stats
+			const completedSessions = (allSessions.results || []).filter(session => session.completed === true);
+			setCompletedWorkoutSessions(completedSessions);
+
+			console.log('🏋️ Today\'s workout sessions loaded:', allSessions.results?.length || 0);
+			console.log('✅ Completed workout sessions:', completedSessions.length);
+		} catch (error: any) {
 			console.error('❌ Failed to fetch workout sessions:', error);
+
+			// Retry on network failures
+			if (retryCount < maxRetries &&
+				(error?.message?.includes('Network request failed') ||
+					error?.message?.includes('Aborted') ||
+					error?.message?.includes('Failed to connect'))) {
+				console.log(`🔄 Retrying workout sessions fetch (${retryCount + 1}/${maxRetries})...`);
+				setTimeout(() => fetchTodayWorkoutSessions(retryCount + 1), 1000 * (retryCount + 1));
+				return;
+			}
+
+			// Only redirect to login if it's a clear authentication error (not network issues)
+			if (error?.message?.includes('Authentication expired') ||
+				error?.message?.includes('AUTH_EXPIRED') ||
+				error?.status === 401) {
+				// Double-check it's not a network error masquerading as auth error
+				if (!error?.message?.includes('Network request failed') &&
+					!error?.message?.includes('Aborted') &&
+					!error?.message?.includes('Failed to connect')) {
+					console.log('🔐 Authentication expired, redirecting to login...');
+					router.replace('/LoginScreen');
+					return;
+				}
+			}
+
 			setTodayWorkoutSessions([]);
+		}
+	}, [router]);
+
+	// Fetch user data
+	const fetchUserData = useCallback(async () => {
+		try {
+			const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+			const userDataStr = await AsyncStorage.getItem('user_data');
+			if (userDataStr) {
+				const user = JSON.parse(userDataStr);
+				setUserData(user);
+				console.log('👤 User data loaded:', user);
+			}
+		} catch (error) {
+			console.warn('⚠️ Could not load user data:', error);
 		}
 	}, []);
 
@@ -77,7 +149,7 @@ const HomeScreen = () => {
 	const loadAllData = useCallback(async () => {
 		setIsLoading(true);
 		try {
-			// Load both stats and sessions in parallel for better performance
+			// Load stats, sessions, and user data in parallel for better performance
 			await Promise.all([
 				fetchDailyStats().catch(err => {
 					console.warn('⚠️ Failed to load daily stats:', err);
@@ -86,6 +158,10 @@ const HomeScreen = () => {
 				fetchTodayWorkoutSessions().catch(err => {
 					console.warn('⚠️ Failed to load workout sessions:', err);
 					// Don't throw, just continue
+				}),
+				fetchUserData().catch(err => {
+					console.warn('⚠️ Failed to load user data:', err);
+					// Don't throw, just continue
 				})
 			]);
 		} catch (error) {
@@ -93,7 +169,7 @@ const HomeScreen = () => {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [fetchDailyStats, fetchTodayWorkoutSessions]);
+	}, [fetchDailyStats, fetchTodayWorkoutSessions, fetchUserData]);
 
 	// Initial load and refresh
 	useEffect(() => {
@@ -110,7 +186,7 @@ const HomeScreen = () => {
 				if (workoutCompleted) {
 					console.log('🔄 Workout completion detected, refreshing stats...');
 					await loadAllData();
-					// Clear the trigger
+					// Clear trigger
 					await AsyncStorage.removeItem('workout_completed');
 				}
 			} catch (error) {
@@ -133,10 +209,10 @@ const HomeScreen = () => {
 						steps: 0,
 						minutes: 0
 					});
+					setCompletedWorkoutSessions([]); // Clear completed workouts too
 					// Update reset date
 					await AsyncStorage.setItem('last_stats_reset', today);
-					// Fetch fresh stats for new day
-					await fetchDailyStats();
+					// Don't need to fetch from backend since we calculate locally
 				}
 			} catch (error) {
 				console.warn('⚠️ Could not check for day reset:', error);
@@ -163,33 +239,97 @@ const HomeScreen = () => {
 		setRefreshing(false);
 	}, [loadAllData]);
 
-	// Don't load AI insights automatically to prevent errors during onboarding
-	// User can access AI features from the AI chatbot when ready
+	// Only load AI insights if user has completed onboarding
 	useEffect(() => {
-		setAiInsight('Welcome to ZoeFit! Complete your profile to get personalized insights.');
+		const loadAIInsight = async () => {
+			try {
+				// Check if user has completed onboarding
+				const hasCompletedOnboarding = await authService.hasCompletedOnboarding();
+
+				if (!hasCompletedOnboarding) {
+					setAiInsight('Welcome to ZoeFit! Complete your profile to get personalized insights.');
+					return;
+				}
+
+				const insights = await apiService.getAIInsights();
+				if (insights?.insights?.length > 0) {
+					setAiInsight(insights.insights[0]);
+				} else {
+					setAiInsight('Welcome to ZoeFit! Complete your profile to get personalized insights.');
+				}
+			} catch (error: any) {
+				console.warn('⚠️ Could not load AI insights:', error);
+				// Check if error is related to missing health metrics
+				if (error?.message?.includes('Health metrics not found') ||
+					error?.message?.includes('health profile')) {
+					setAiInsight('Complete your health profile to get personalized AI insights and recommendations.');
+					Alert.alert(
+						'Complete Your Profile',
+						'Please complete your health profile to get personalized AI insights and recommendations.',
+						[
+							{
+								text: 'Cancel',
+								style: 'cancel',
+							},
+							{
+								text: 'Complete Profile',
+								onPress: () => router.push('/screens/personal-info'),
+							},
+						]
+					);
+				} else {
+					setAiInsight('Welcome to ZoeFit! Complete your profile to get personalized insights.');
+				}
+			}
+		};
+
+		loadAIInsight();
 	}, []);
 
 	// Removed automatic AI insights loading to prevent errors during onboarding
-	// Users can access AI features through the AI chatbot when ready
+	// Users can access AI features through AI chatbot when ready
 
 	// Menu handlers
 	const handleMenuPress = () => {
 		setShowMenu(!showMenu);
+		if (!showMenu) {
+			// Open side panel from left
+			Animated.timing(slideAnim, {
+				toValue: 0,
+				duration: 300,
+				useNativeDriver: false,
+			}).start();
+		} else {
+			// Close side panel to left
+			Animated.timing(slideAnim, {
+				toValue: -screenWidth,
+				duration: 300,
+				useNativeDriver: false,
+			}).start();
+		}
+	};
+
+	const closeSidePanel = () => {
+		setShowMenu(false);
+		Animated.timing(slideAnim, {
+			toValue: -screenWidth,
+			duration: 300,
+			useNativeDriver: false,
+		}).start();
 	};
 
 	const handleAchievements = () => {
-		setShowMenu(false);
-		// For now, show a placeholder message
-		alert('Achievements section coming soon!');
+		closeSidePanel();
+		router.push('/screens/achievements' as any);
 	};
 
 	const handleWorkoutHistory = () => {
-		setShowMenu(false);
+		closeSidePanel();
 		router.push('/screens/workout-history' as any);
 	};
 
 	const handleLogout = async () => {
-		setShowMenu(false);
+		closeSidePanel();
 		try {
 			await authService.logout();
 			router.replace('/screens/welcomePage' as any);
@@ -227,34 +367,18 @@ const HomeScreen = () => {
 					{/* HEADER */}
 					<LinearGradient colors={isDarkMode ? ['#667eea', '#764ba2', '#f093fb'] : theme.headerGradient} style={styles.header}>
 						<View style={styles.headerTop}>
-					    <TouchableOpacity onPress={handleMenuPress} style={styles.menuButton}>
-									<Text style={styles.menuIcon}>⋮</Text>
-								</TouchableOpacity>
+							<TouchableOpacity onPress={handleMenuPress} style={styles.menuButton}>
+								<Text style={styles.menuIcon}>☰</Text>
+							</TouchableOpacity>
 							<Text style={styles.logo}>Zoefit</Text>
 							<View style={styles.headerButtons}>
 								<TouchableOpacity onPress={handleAiChatbotPress} style={styles.aiButton}>
 									<Text style={styles.aiIcon}>🤖</Text>
 									{isAiActive && <Text style={styles.aiStatus}>Active</Text>}
 								</TouchableOpacity>
-								
 							</View>
 						</View>
-						
-						{/* Menu Dropdown */}
-						{showMenu && (
-							<View style={[styles.menuDropdown, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
-								<TouchableOpacity style={styles.menuItem} onPress={handleAchievements}>
-									<Text style={[styles.menuItemText, { color: theme.text }]}>🏆 Achievements</Text>
-								</TouchableOpacity>
-								<TouchableOpacity style={styles.menuItem} onPress={handleWorkoutHistory}>
-									<Text style={[styles.menuItemText, { color: theme.text }]}>📋 Workout History</Text>
-								</TouchableOpacity>
-								<TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-									<Text style={[styles.menuItemText, { color: theme.text }]}>🚪 Logout</Text>
-								</TouchableOpacity>
-							</View>
-						)}
-						
+
 						<View style={styles.welcomeCardGlass}>
 							<Text style={styles.welcome}>Welcome Back 👋</Text>
 							<Text style={styles.sub}>Ready to crush your fitness goals today?</Text>
@@ -333,17 +457,6 @@ const HomeScreen = () => {
 						<ActionCard icon="😴" title="Sleep" />
 					</View>
 
-					{/* BADGES */}
-					{/*<Text style={[styles.sectionTitle, { color: theme.text }]}>Your Progress</Text>
-					<View style={styles.badgeRow}>
-						<View style={[styles.badgeGlass, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
-							<Text style={[styles.badgeText, { color: theme.text }]}>🔥 7 Day Streak</Text>
-						</View>
-						<View style={[styles.badgeGlass, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
-							<Text style={[styles.badgeText, { color: theme.text }]}>👟 10,000 Steps</Text>
-						</View>
-					</View>*/}
-
 					{/* QUOTE */}
 					<LinearGradient colors={theme.headerGradient} style={styles.quoteCardGlass}>
 						<Text style={styles.quote}>"The only bad workout is the one that didn't happen"</Text>
@@ -351,8 +464,75 @@ const HomeScreen = () => {
 					</LinearGradient>
 				</ScrollView>
 			</SafeAreaView>
-		</View >
 
+			{/* Side Panel Overlay */}
+			{showMenu && (
+				<TouchableWithoutFeedback onPress={closeSidePanel}>
+					<View style={styles.overlay} />
+				</TouchableWithoutFeedback>
+			)}
+
+			{/* Animated Side Panel */}
+			<Animated.View
+				style={[
+					styles.sidePanel,
+					{
+						backgroundColor: isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.85)',
+						borderColor: theme.border,
+						transform: [{ translateX: slideAnim }]
+					}
+				]}
+			>
+				<SafeAreaView style={styles.sidePanelSafeArea} edges={['top', 'bottom']}>
+					<View style={styles.sidePanelHeader}>
+						<View style={styles.userInfo}>
+							<View style={[styles.profilePicture, { backgroundColor: theme.border }]}>
+								{userData?.profile_picture ? (
+									<Image source={{ uri: userData.profile_picture }} style={styles.profileImage} />
+								) : (
+									<Text style={[styles.profileInitial, { color: theme.text }]}>
+										{userData?.first_name?.charAt(0)?.toUpperCase() || userData?.email?.charAt(0)?.toUpperCase() || 'U'}
+									</Text>
+								)}
+							</View>
+							<View style={styles.userDetails}>
+								<Text style={[styles.userName, { color: theme.text }]}>
+									{userData?.first_name ? `${userData.first_name} ${userData.last_name || ''}`.trim() : 'User'}
+								</Text>
+							</View>
+						</View>
+						<TouchableOpacity onPress={closeSidePanel} style={styles.closeButton}>
+							<Text style={[styles.closeButtonText, { color: theme.text }]}>✕</Text>
+						</TouchableOpacity>
+					</View>
+
+					<View style={styles.sidePanelContent}>
+						<TouchableOpacity style={styles.sidePanelItem} onPress={handleAchievements}>
+							<Text style={[styles.sidePanelItemText, { color: theme.text }]}>🏆 Achievements</Text>
+						</TouchableOpacity>
+						<TouchableOpacity style={styles.sidePanelItem} onPress={handleWorkoutHistory}>
+							<Text style={[styles.sidePanelItemText, { color: theme.text }]}>📋 Workout History</Text>
+						</TouchableOpacity>
+						<TouchableOpacity style={styles.sidePanelItem} onPress={() => { closeSidePanel(); router.push('/screens/goals-settings' as any); }}>
+							<Text style={[styles.sidePanelItemText, { color: theme.text }]}>🎯 Fitness Goals</Text>
+						</TouchableOpacity>
+						{/* <TouchableOpacity style={styles.sidePanelItem} onPress={() => { closeSidePanel(); router.push('/screens/personal-info' as any); }}>
+							<Text style={[styles.sidePanelItemText, { color: theme.text }]}>👤 Personal Info</Text>
+						</TouchableOpacity> */}
+						<TouchableOpacity style={styles.sidePanelItem} onPress={() => { closeSidePanel(); router.push('/screens/help-support' as any); }}>
+							<Text style={[styles.sidePanelItemText, { color: theme.text }]}>❓Help & Support</Text>
+						</TouchableOpacity>
+					</View>
+
+					{/* Logout at bottom */}
+					<View style={styles.logoutContainer}>
+						<TouchableOpacity style={[styles.logoutButton, { backgroundColor: '#ff4757' }]} onPress={handleLogout}>
+							<Text style={styles.logoutButtonText}>🚪 Logout</Text>
+						</TouchableOpacity>
+					</View>
+				</SafeAreaView>
+			</Animated.View>
+		</View>
 	);
 };
 
@@ -408,34 +588,6 @@ const ActionCard = ({ icon, title, onPress }: ActionCardProps) => {
 		</Animated.View>
 	);
 };
-
-// ----------------
-// Bottom Navigation
-// ----------------
-type BottomNavProps = {
-	router: any;
-};
-
-// const BottomNav = ({ router }: BottomNavProps) => (
-// 	<View style={styles.bottomNav}>
-// 		<TouchableOpacity style={styles.navItem}>
-// 			<Text style={styles.navIcon}>🏠</Text>
-// 			<Text style={styles.navLabel}>Home</Text>
-// 		</TouchableOpacity>
-// 		<TouchableOpacity style={styles.navItem} onPress={() => router.push('/Zoefit/workout')}>
-// 			<Text style={styles.navIcon}>💪</Text>
-// 			<Text style={styles.navLabel}>Workout</Text>
-// 		</TouchableOpacity>
-// 		<TouchableOpacity style={styles.navItem}>
-// 			<Text style={styles.navIcon}>🍽️</Text>
-// 			<Text style={styles.navLabel}>Nutrition</Text>
-// 		</TouchableOpacity>
-// 		<TouchableOpacity style={styles.navItem}>
-// 			<Text style={styles.navIcon}>👤</Text>
-// 			<Text style={styles.navLabel}>Profile</Text>
-// 		</TouchableOpacity>
-// 	</View>
-// );
 
 export default HomeScreen;
 
@@ -496,13 +648,15 @@ const styles = StyleSheet.create({
 	},
 	welcomeCardGlass: {
 		marginTop: 15,
-		backgroundColor: 'rgba(255,255,255,0.18)',
+		backgroundColor: 'rgba(255,255,255,0.25)',
 		borderRadius: 20,
 		padding: 18,
 		shadowColor: '#43e97b',
 		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.12,
+		shadowOpacity: 0.18,
 		shadowRadius: 12,
+		borderWidth: 1,
+		borderColor: 'rgba(255,255,255,0.3)',
 	},
 	welcome: {
 		fontSize: 26,
@@ -682,7 +836,6 @@ const styles = StyleSheet.create({
 		fontSize: 15,
 		color: '#2e7d32',
 	},
-	
 	quoteCardGlass: {
 		margin: 15,
 		padding: 20,
@@ -710,64 +863,6 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		fontWeight: '500',
 	},
-	fab: {
-		position: 'absolute',
-		bottom: 32,
-		right: 28,
-		zIndex: 100,
-		shadowColor: '#43e97b',
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.18,
-		shadowRadius: 12,
-		elevation: 8,
-	},
-	fabGradient: {
-		width: 64,
-		height: 64,
-		borderRadius: 32,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	fabIcon: {
-		color: '#fff',
-		fontSize: 36,
-		fontWeight: 'bold',
-		textShadowColor: '#38f9d7',
-		textShadowOffset: { width: 0, height: 2 },
-		textShadowRadius: 8,
-	},
-	bottomNav: {
-		flexDirection: 'row',
-		justifyContent: 'space-around',
-		alignItems: 'center',
-		backgroundColor: 'rgba(255,255,255,0.85)',
-		borderTopLeftRadius: 24,
-		borderTopRightRadius: 24,
-		paddingVertical: 10,
-		position: 'absolute',
-		left: 0,
-		right: 0,
-		bottom: 0,
-		shadowColor: '#43e97b',
-		shadowOffset: { width: 0, height: -2 },
-		shadowOpacity: 0.08,
-		shadowRadius: 8,
-		elevation: 12,
-		zIndex: 200,
-	},
-	navItem: {
-		alignItems: 'center',
-		flex: 1,
-	},
-	navIcon: {
-		fontSize: 24,
-		marginBottom: 2,
-	},
-	navLabel: {
-		fontSize: 12,
-		color: '#2e7d32',
-		fontWeight: '600',
-	},
 	headerButtons: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -787,33 +882,130 @@ const styles = StyleSheet.create({
 		minHeight: 28,
 	},
 	menuIcon: {
-		fontSize: 24,
+		fontSize: 18,
 		color: '#fff',
 		fontWeight: 'bold',
 	},
-	menuDropdown: {
+	// Side Panel Styles
+	overlay: {
 		position: 'absolute',
-		top: 40,
-		left: 20,
-		backgroundColor: 'rgba(255,255,255,0.95)',
-		borderRadius: 12,
-		padding: 8,
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		zIndex: 999,
+	},
+	sidePanel: {
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		bottom: 0,
+		width: screenWidth * 0.75,
+		maxWidth: 300,
+		backgroundColor: 'transparent',
+		borderWidth: 1,
+		borderColor: '#e0e0e0',
 		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.15,
-		shadowRadius: 12,
-		elevation: 8,
+		shadowOffset: { width: 2, height: 0 },
+		shadowOpacity: 0.1,
+		shadowRadius: 8,
+		elevation: 10,
 		zIndex: 1000,
-		minWidth: 180,
 	},
-	menuItem: {
-		paddingVertical: 12,
-		paddingHorizontal: 16,
+	sidePanelSafeArea: {
+		flex: 1,
+	},
+	sidePanelHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		padding: 20,
+		borderBottomWidth: 1,
+		borderBottomColor: '#e0e0e0',
+	},
+	userInfo: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		flex: 1,
+	},
+	profilePicture: {
+		width: 50,
+		height: 50,
+		borderRadius: 25,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginRight: 12,
+		borderWidth: 3,
+		borderColor: '#3eb088',
+		shadowColor: '#3eb088',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.3,
+		shadowRadius: 4,
+		elevation: 5,
+	},
+	profileImage: {
+		width: 44,
+		height: 44,
+		borderRadius: 22,
+	},
+	profileInitial: {
+		fontSize: 20,
+		fontWeight: 'bold',
+	},
+	userDetails: {
+		flex: 1,
+	},
+	userName: {
+		fontSize: 16,
+		fontWeight: '600',
+	},
+	userEmail: {
+		fontSize: 12,
+		marginTop: 2,
+	},
+	closeButton: {
+		padding: 8,
+		borderRadius: 15,
+		backgroundColor: '#f0f0f0',
+	},
+	closeButtonText: {
+		fontSize: 18,
+		fontWeight: 'bold',
+	},
+	sidePanelContent: {
+		flex: 1,
+		padding: 20,
+	},
+	sidePanelItem: {
+		paddingVertical: 15,
+		paddingHorizontal: 20,
 		borderRadius: 8,
-		marginVertical: 2,
+		marginBottom: 10,
+		backgroundColor: '#e7eaedff',
+		borderWidth: 1,
+		borderColor: '#aecdc2be',
 	},
-	menuItemText: {
+	sidePanelItemText: {
 		fontSize: 16,
 		fontWeight: '500',
+	},
+	logoutContainer: {
+		padding: 20,
+		borderTopWidth: 1,
+		borderTopColor: '#e0e0e0',
+		marginTop: 'auto',
+	},
+	logoutButton: {
+		paddingVertical: 15,
+		paddingHorizontal: 20,
+		borderRadius: 8,
+		backgroundColor: '#ff4757',
+		alignItems: 'center',
+	},
+	logoutButtonText: {
+		fontSize: 16,
+		fontWeight: '600',
+		color: '#fff',
 	},
 });

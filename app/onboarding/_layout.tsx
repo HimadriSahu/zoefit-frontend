@@ -10,11 +10,11 @@ export default function OnboardingLayout() {
       <Stack.Screen name="weight" options={{ headerShown: false }} />
       <Stack.Screen name="goal" options={{ headerShown: false }} />
       <Stack.Screen name="activity-level" options={{ headerShown: false }} />
-      <Stack.Screen name="equipment" options={{ headerShown: false }} />
       <Stack.Screen name="dietary-preferences" options={{ headerShown: false }} />
       <Stack.Screen name="medical-conditions" options={{ headerShown: false }} />
       <Stack.Screen name="progress-setup" options={{ headerShown: false }} />
       <Stack.Screen name="workout-preferences" options={{ headerShown: false }} />
+      <Stack.Screen name="contact-info" options={{ headerShown: false }} />
       <Stack.Screen name="breakfast-time" options={{ headerShown: false }} />
       <Stack.Screen name="dinner-time" options={{ headerShown: false }} />
       <Stack.Screen name="personalizing" options={{ headerShown: false }} />

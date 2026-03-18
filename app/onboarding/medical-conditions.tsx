@@ -83,9 +83,9 @@ const MedicalConditionsScreen = () => {
 
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '90%', backgroundColor: theme.primary }]} />
+              <View style={[styles.progressFill, { width: '88%', backgroundColor: theme.primary }]} />
             </View>
-            <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 9 of 10</Text>
+            <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 8 of 9</Text>
           </View>
 
           <View style={styles.content}>
@@ -151,9 +151,9 @@ const MedicalConditionsScreen = () => {
 
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '90%', backgroundColor: theme.primary }]} />
+            <View style={[styles.progressFill, { width: '88%', backgroundColor: theme.primary }]} />
           </View>
-          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 9 of 10</Text>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 8 of 9</Text>
         </View>
 
         <View style={styles.content}>

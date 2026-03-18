@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useRouter } from 'expo-router';
 import { authService } from '../services/auth';
 import { ApiError } from '../services/api';
 
@@ -21,22 +22,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any | null>(null);
+  const router = useRouter();
 
   const checkAuthStatus = useCallback(async () => {
     try {
       const authenticated = await authService.isAuthenticated();
       const userData = await authService.getUserData();
 
-      setIsAuthenticated(authenticated);
-      setUser(userData);
+      if (!authenticated || !userData) {
+        console.log('🔐 Authentication check failed, clearing any remaining data');
+        await authService.clearStorage();
+        setIsAuthenticated(false);
+        setUser(null);
+        // Redirect to login screen
+        router.replace('/LoginScreen');
+      } else {
+        setIsAuthenticated(true);
+        setUser(userData);
+      }
     } catch (error) {
       console.error('Auth check failed:', error);
+      await authService.clearStorage();
       setIsAuthenticated(false);
       setUser(null);
+      // Redirect to login screen
+      router.replace('/LoginScreen');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     checkAuthStatus();
@@ -61,8 +75,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsAuthenticated(false);
       setUser(null);
+      // Redirect to login screen
+      router.replace('/LoginScreen');
     }
-  }, []);
+  }, [router]);
 
   const refreshAuth = useCallback(async () => {
     try {
@@ -70,16 +86,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const userData = await authService.getUserData();
 
       if (!authenticated || !userData) {
-        console.log('🔐 Authentication lost, redirecting to login');
+        console.log('🔐 Authentication lost during refresh, clearing data and redirecting to login');
+        await authService.clearStorage();
         setIsAuthenticated(false);
         setUser(null);
+        // Redirect to login screen
+        router.replace('/LoginScreen');
       }
     } catch (error) {
       console.error('Auth refresh failed:', error);
+      await authService.clearStorage();
       setIsAuthenticated(false);
       setUser(null);
+      // Redirect to login screen
+      router.replace('/LoginScreen');
     }
-  }, []);
+  }, [router]);
 
   // Global error handler for authentication errors
   useEffect(() => {
@@ -92,8 +114,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Check if it's an authentication error
           if (apiError.status === 401 || apiError.body?.code === 'AUTH_EXPIRED') {
             console.log('🔐 Authentication error detected, logging out...');
+            // Clear any remaining auth data
+            authService.clearStorage?.().catch(() => { });
             setIsAuthenticated(false);
             setUser(null);
+            // Redirect to login screen
+            router.replace('/LoginScreen');
           }
         }
       };
@@ -105,8 +131,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           if (apiError.status === 401 || apiError.body?.code === 'AUTH_EXPIRED') {
             console.log('🔐 Authentication error in promise, logging out...');
+            // Clear any remaining auth data
+            authService.clearStorage?.().catch(() => { });
             setIsAuthenticated(false);
             setUser(null);
+            // Redirect to login screen
+            router.replace('/LoginScreen');
           }
         }
       };
@@ -119,7 +149,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       };
     }
-  }, []);
+  }, [router]);
 
   const value: AuthContextType = {
     isAuthenticated,
