@@ -76,7 +76,6 @@ export interface WorkoutPlan {
   estimated_duration: number;
   difficulty_level: string;
   intensity_score: number;
-  equipment_needed: string[];
   completed: boolean;
   completion_time?: string;
   user_rating?: number;
@@ -154,9 +153,11 @@ export interface DailyStats {
 
 // Workout Preferences Interfaces
 export interface WorkoutPreferencesData {
-  equipment_needed: string[];
   difficulty_level: 'beginner' | 'intermediate' | 'advanced';
   workout_type_preference: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed';
+  preferred_session_duration?: number;
+  preferred_workout_days_per_week?: number;
+  equipment_available?: string[];
 }
 
 export interface WorkoutPreferencesResponse {
@@ -269,12 +270,15 @@ class ApiService {
       '/dashboard/': 'Dashboard',
       '/streaks/': 'Streaks',
       '/achievements/': 'Achievements',
-      '/profiles/profile/': 'User Profile',
-      '/profiles/profile/create/': 'Create Profile',
-      '/profiles/profile/update/': 'Update Profile',
-      '/profiles/profile/upload-picture/': 'Upload Profile Picture',
-      '/profiles/contact-info/': 'Get Contact Information',
-      '/profiles/contact-info/update/': 'Update Contact Information',
+      '/users/profile/': 'User Profile',
+      '/users/profile/update/': 'Update Profile',
+      '/users/profile/picture/upload/': 'Upload Profile Picture',
+      '/users/profile/picture/delete/': 'Delete Profile Picture',
+      '/users/onboarding/': 'Submit Onboarding',
+      '/users/onboarding/status/': 'Get Onboarding Status',
+      '/users/profile/analytics/': 'Get Profile Analytics',
+      '/users/activity/': 'Track Activity',
+      '/users/activities/': 'Get Activities',
     };
 
     return endpointMap[endpoint] || endpoint;
@@ -283,11 +287,11 @@ class ApiService {
   private getEndpointType(endpoint: string): string {
     if (endpoint.startsWith('/auth/') || endpoint === '/login/' || endpoint === '/register/') {
       return 'Authentication';
-    } else if (endpoint.startsWith('/profiles/')) {
-      return 'User Profile';
+    } else if (endpoint.startsWith('/users/')) {
+      return 'User Management';
     } else if (endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/workout-sessions/') ||
       endpoint.startsWith('/dashboard/') || endpoint.startsWith('/achievements/') ||
-      endpoint.startsWith('/streaks/')) {
+      endpoint.startsWith('/streaks')) {
       return 'Frontend Features';
     } else {
       return 'AI Features';
@@ -347,15 +351,12 @@ class ApiService {
 
     // Determine the base URL based on endpoint type
     const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/login/' || endpoint === '/register/' || endpoint === '/token/refresh/' || endpoint === '/forgot-password/' || endpoint === '/logout/';
-    const isProfilesEndpoint = endpoint.startsWith('/profiles/');
     const isUsersEndpoint = endpoint.startsWith('/users/');
     const isFrontendEndpoint = endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/workout-sessions/') || endpoint.startsWith('/dashboard/') || endpoint.startsWith('/achievements/') || endpoint.startsWith('/streaks/') || endpoint.startsWith('/progress-') || endpoint.startsWith('/meal-logs/') || endpoint.startsWith('/nutrition-summary/') || endpoint.startsWith('/workout-stats/');
 
     let baseUrl: string;
     if (isAuthEndpoint) {
       baseUrl = `${this.baseURL}/api/auth`;
-    } else if (isProfilesEndpoint) {
-      baseUrl = `${this.baseURL}/api/profiles`;
     } else if (isUsersEndpoint) {
       baseUrl = `${this.baseURL}/api/users`;
     } else if (isFrontendEndpoint) {
@@ -364,7 +365,7 @@ class ApiService {
       baseUrl = `${this.baseURL}/api/ai`;
     }
 
-    const url = isAuthEndpoint ? `${baseUrl}${endpoint.replace('/auth/', '/')}` : isProfilesEndpoint ? `${baseUrl}${endpoint}` : isUsersEndpoint ? `${baseUrl}${endpoint}` : `${baseUrl}${endpoint}`;
+    const url = isAuthEndpoint ? `${baseUrl}${endpoint.replace('/auth/', '/')}` : `${baseUrl}${endpoint}`;
 
     console.log('🌐 API Request:', { url, method: options.method || 'GET', useAuth });
 
@@ -519,8 +520,8 @@ class ApiService {
                 let retryBaseUrl: string;
                 if (isAuthEndpoint) {
                   retryBaseUrl = `${this.baseURL}/api/auth`;
-                } else if (isProfilesEndpoint) {
-                  retryBaseUrl = `${this.baseURL}/api/profiles`;
+                } else if (isUsersEndpoint) {
+                  retryBaseUrl = `${this.baseURL}/api/users`;
                 } else if (isFrontendEndpoint) {
                   retryBaseUrl = `${this.baseURL}/api/frontend`;
                 } else {
@@ -1043,22 +1044,21 @@ class ApiService {
 
   // Contact Information Specific Methods
   async getContactInfo(): Promise<{ phone_number: string | null; email: string }> {
-    const profile = await this.getComprehensiveProfile();
+    const response = await this.request<{ phone_number: string | null; email: string }>('/users/contact/', {}, true);
     return {
-      phone_number: profile.phone_number,
-      email: profile.email || '', // Email comes from user model
+      phone_number: response.phone_number,
+      email: response.email
     };
   }
 
   async updateContactInfo(phoneNumber: string): Promise<{ message: string; contact_info: { phone_number: string; email: string } }> {
-    await this.updateComprehensiveProfile({ phone_number: phoneNumber });
-    const contactInfo = await this.getContactInfo();
+    const response = await this.request<{ message: string; contact_info: { phone_number: string; email: string } }>('/users/contact/update/', {
+      method: 'PATCH',
+      body: JSON.stringify({ phone_number: phoneNumber })
+    }, true);
     return {
-      message: 'Contact information updated successfully',
-      contact_info: {
-        phone_number: contactInfo.phone_number || 'NA',
-        email: contactInfo.email
-      }
+      message: response.message,
+      contact_info: response.contact_info
     };
   }
 
@@ -1069,7 +1069,7 @@ class ApiService {
       throw new ApiError('No authentication token available');
     }
 
-    const url = `${this.baseURL}/api/profiles/profile/upload-picture/`;
+    const url = `${this.baseURL}/api/users/profile/picture/upload/`;
     const config: RequestInit = {
       method: 'POST',
       headers: {

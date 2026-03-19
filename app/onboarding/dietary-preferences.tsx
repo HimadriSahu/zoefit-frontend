@@ -104,9 +104,9 @@ const DietaryPreferencesScreen = () => {
 
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '77%', backgroundColor: theme.primary }]} />
+            <View style={[styles.progressFill, { width: '80%', backgroundColor: theme.primary }]} />
           </View>
-          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 7 of 9</Text>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 8 of 10</Text>
         </View>
 
         <View style={styles.content}>

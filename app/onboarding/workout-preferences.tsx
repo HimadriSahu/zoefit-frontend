@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useOnboarding } from '../screens/OnboardingContext';
 import { useTheme } from '../screens/ThemeContext';
+import { apiService } from '../../services/api';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -12,8 +13,8 @@ const WorkoutPreferencesScreen = () => {
   const router = useRouter();
   const { data, setDifficultyLevel, setWorkoutTypePreference } = useOnboarding();
   const { theme } = useTheme();
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(data.difficultyLevel);
-  const [selectedWorkoutType, setSelectedWorkoutType] = useState<string | null>(data.workoutTypePreference);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<'beginner' | 'intermediate' | 'advanced' | null>(data.difficultyLevel);
+  const [selectedWorkoutType, setSelectedWorkoutType] = useState<'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed' | null>(data.workoutTypePreference);
 
   const difficultyLevels = [
     {
@@ -77,20 +78,36 @@ const WorkoutPreferencesScreen = () => {
     },
   ];
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Store workout preferences in onboarding context
     if (selectedDifficulty) {
-      setDifficultyLevel(selectedDifficulty as 'beginner' | 'intermediate' | 'advanced');
+      setDifficultyLevel(selectedDifficulty);
     }
     if (selectedWorkoutType) {
-      setWorkoutTypePreference(selectedWorkoutType as 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed');
+      setWorkoutTypePreference(selectedWorkoutType);
     }
 
     console.log('Selected difficulty:', selectedDifficulty);
     console.log('Selected workout type:', selectedWorkoutType);
+    console.log('Available equipment:', data.equipmentAvailable);
 
-    // Navigate to contact information
-    router.push('/onboarding/contact-info' as any);
+    try {
+      // Save to backend API
+      const response = await apiService.saveWorkoutPreferences({
+        difficulty_level: selectedDifficulty || 'beginner',
+        workout_type_preference: selectedWorkoutType || 'mixed',
+        equipment_available: data.equipmentAvailable || []
+      });
+
+      console.log('Workout preferences saved:', response);
+
+      // Navigate to contact information
+      router.push('/onboarding/contact-info' as any);
+    } catch (error) {
+      console.error('Error saving workout preferences:', error);
+      // Still navigate even if there's an error
+      router.push('/onboarding/contact-info' as any);
+    }
   };
 
   const handleSkip = () => {
@@ -115,9 +132,9 @@ const WorkoutPreferencesScreen = () => {
 
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '100%', backgroundColor: theme.primary }]} />
+            <View style={[styles.progressFill, { width: '80%', backgroundColor: theme.primary }]} />
           </View>
-          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 9 of 9</Text>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 8 of 10</Text>
         </View>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -148,7 +165,7 @@ const WorkoutPreferencesScreen = () => {
                       borderColor: theme.border,
                     }
                   ]}
-                  onPress={() => setSelectedDifficulty(level.value)}
+                  onPress={() => setSelectedDifficulty(level.value as 'beginner' | 'intermediate' | 'advanced')}
                 >
                   <View style={styles.optionHeader}>
                     <Text style={styles.optionIcon}>{level.icon}</Text>
@@ -209,7 +226,7 @@ const WorkoutPreferencesScreen = () => {
                       borderColor: theme.border,
                     }
                   ]}
-                  onPress={() => setSelectedWorkoutType(type.value)}
+                  onPress={() => setSelectedWorkoutType(type.value as 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed')}
                 >
                   <View style={styles.optionHeader}>
                     <Text style={styles.optionIcon}>{type.icon}</Text>

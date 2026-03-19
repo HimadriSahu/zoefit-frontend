@@ -16,34 +16,25 @@ import { apiService } from '../../services/api';
 
 const ContactInfoScreen = () => {
   const router = useRouter();
-  const { data, setContactInfo, setPhoneNumber } = useOnboarding();
+  const { data, setPhoneNumber } = useOnboarding();
 
-  const [contactInfo, setContactInfoState] = useState({
-    phone: '',
-  });
+  const [phoneNumber, setPhoneNumberState] = useState(data.phoneNumber || '');
 
-  const handleInputChange = (field: string, value: string) => {
-    setContactInfoState(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+  const handleInputChange = (value: string) => {
+    setPhoneNumberState(value);
   };
 
   const handleSkip = async () => {
     try {
       // Set phone to "NA" when user skips
-      const skippedData = {
-        phone: 'NA',
-      };
+      const skippedPhone = 'NA';
 
       // Update local state
-      setContactInfoState(skippedData);
-      setPhoneNumber('NA'); // Also update the phoneNumber field for consistency
+      setPhoneNumberState(skippedPhone);
+      setPhoneNumber(skippedPhone);
 
-      // Save to backend using comprehensive user API
-      await apiService.updateComprehensiveProfile({
-        phone_number: 'NA'
-      });
+      // Save to backend using contact info API
+      await apiService.updateContactInfo(skippedPhone);
 
       router.push('/onboarding/breakfast-time');
     } catch (error) {
@@ -54,7 +45,7 @@ const ContactInfoScreen = () => {
 
   const handleContinue = async () => {
     // Validate that phone is filled or explicitly set to "NA"
-    const hasAnyData = contactInfo.phone.trim() !== '';
+    const hasAnyData = phoneNumber.trim() !== '';
 
     if (!hasAnyData) {
       Alert.alert(
@@ -70,18 +61,14 @@ const ContactInfoScreen = () => {
 
     try {
       // Convert empty phone to "NA" for consistency
-      const processedData = {
-        phone: contactInfo.phone.trim() || 'NA',
-      };
+      const processedPhone = phoneNumber.trim() || 'NA';
 
       // Update local state
-      setContactInfoState(processedData);
-      setPhoneNumber(processedData.phone); // Also update the phoneNumber field for consistency
+      setPhoneNumberState(processedPhone);
+      setPhoneNumber(processedPhone);
 
-      // Save to backend using comprehensive user API
-      await apiService.updateComprehensiveProfile({
-        phone_number: processedData.phone
-      });
+      // Save to backend using contact info API
+      await apiService.updateContactInfo(processedPhone);
 
       router.push('/onboarding/breakfast-time');
     } catch (error) {
@@ -93,7 +80,6 @@ const ContactInfoScreen = () => {
   const renderInputField = (
     label: string,
     value: string,
-    field: string,
     placeholder: string,
     keyboardType: any = 'default'
   ) => (
@@ -102,7 +88,7 @@ const ContactInfoScreen = () => {
       <TextInput
         style={styles.input}
         value={value}
-        onChangeText={(text) => handleInputChange(field, text)}
+        onChangeText={handleInputChange}
         placeholder={placeholder}
         placeholderTextColor="#9ca3af"
         keyboardType={keyboardType}
@@ -137,7 +123,7 @@ const ContactInfoScreen = () => {
             <Text style={styles.sectionTitle}>Contact Information</Text>
             <Text style={styles.sectionSubtitle}>Your phone number (optional)</Text>
 
-            {renderInputField('Phone Number', contactInfo.phone, 'phone', 'Enter phone number or "NA"', 'phone-pad')}
+            {renderInputField('Phone Number', phoneNumber, 'Enter phone number or "NA"', 'phone-pad')}
           </View>
 
           {/* Privacy Notice */}

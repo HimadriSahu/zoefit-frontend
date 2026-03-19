@@ -30,6 +30,7 @@ export interface OnboardingData {
   // Workout Plan fields
   difficultyLevel: 'beginner' | 'intermediate' | 'advanced' | null;
   workoutTypePreference: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed' | null;
+  equipmentAvailable: string[] | null;
   // Progress Tracking fields
   bodyFatPercentage: number | null;
   muscleMass: number | null;
@@ -59,6 +60,7 @@ const defaultData: OnboardingData = {
   // Workout Plan fields
   difficultyLevel: null,
   workoutTypePreference: null,
+  equipmentAvailable: null,
   // Progress Tracking fields
   bodyFatPercentage: null,
   muscleMass: null,
@@ -89,6 +91,7 @@ interface OnboardingContextType {
   // Workout Plan setters
   setDifficultyLevel: (d: 'beginner' | 'intermediate' | 'advanced') => void;
   setWorkoutTypePreference: (w: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed') => void;
+  setEquipmentAvailable: (e: string[]) => void;
   // Progress Tracking setters
   setBodyFatPercentage: (b: number) => void;
   setMuscleMass: (m: number) => void;
@@ -163,6 +166,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   // Workout Plan setters
   const setDifficultyLevel = (difficultyLevel: 'beginner' | 'intermediate' | 'advanced') => setData((p) => ({ ...p, difficultyLevel }));
   const setWorkoutTypePreference = (workoutTypePreference: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed') => setData((p) => ({ ...p, workoutTypePreference }));
+  const setEquipmentAvailable = (equipmentAvailable: string[]) => setData((p) => ({ ...p, equipmentAvailable }));
   // Progress Tracking setters
   const setBodyFatPercentage = (bodyFatPercentage: number) => setData((p) => ({ ...p, bodyFatPercentage }));
   const setMuscleMass = (muscleMass: number) => setData((p) => ({ ...p, muscleMass }));
@@ -214,6 +218,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         // Workout Plan setters
         setDifficultyLevel,
         setWorkoutTypePreference,
+        setEquipmentAvailable,
         // Progress Tracking setters
         setBodyFatPercentage,
         setMuscleMass,

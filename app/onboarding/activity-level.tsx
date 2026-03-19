@@ -76,9 +76,9 @@ const ActivityLevelScreen = () => {
 
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '66%', backgroundColor: theme.primary }]} />
+            <View style={[styles.progressFill, { width: '60%', backgroundColor: theme.primary }]} />
           </View>
-          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 6 of 9</Text>
+          <Text style={[styles.progressText, { color: theme.textSecondary }]}>Step 6 of 10</Text>
         </View>
 
         <View style={styles.content}>
