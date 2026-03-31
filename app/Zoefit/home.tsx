@@ -87,17 +87,26 @@ const HomeScreen = () => {
 			const today = new Date().toISOString().split('T')[0];
 			// Fetch all workout sessions and filter for today
 			const allSessions = await apiService.getWorkoutSessions();
-			const todaysSessions = allSessions.results.filter((session: any) => {
-				const sessionDate = new Date(session.created_at).toISOString().split('T')[0];
-				return sessionDate === today;
+			const todaysSessions = allSessions.workout_sessions.filter((session: any) => {
+				// Handle both created_at and start_time fields, with proper date validation
+				const dateField = session.created_at || session.start_time;
+				if (!dateField) return false;
+
+				try {
+					const sessionDate = new Date(dateField).toISOString().split('T')[0];
+					return sessionDate === today;
+				} catch (error) {
+					console.warn('⚠️ Invalid date format for session:', dateField);
+					return false;
+				}
 			});
 			setTodayWorkoutSessions(todaysSessions || []);
 
 			// Filter only completed workouts for accurate stats
-			const completedSessions = (allSessions.results || []).filter(session => session.completed === true);
+			const completedSessions = (allSessions.workout_sessions || []).filter(session => session.completed === true);
 			setCompletedWorkoutSessions(completedSessions);
 
-			console.log('🏋️ Today\'s workout sessions loaded:', allSessions.results?.length || 0);
+			console.log('🏋️ Today\'s workout sessions loaded:', allSessions.workout_sessions?.length || 0);
 			console.log('✅ Completed workout sessions:', completedSessions.length);
 		} catch (error: any) {
 			console.error('❌ Failed to fetch workout sessions:', error);

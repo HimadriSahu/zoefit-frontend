@@ -7,8 +7,8 @@ const API_CONFIG = {
 
   // Development URLs in order of preference
   development: [
-    'http://192.168.1.3:8000', // Current working machine IP (try first)
-    'http://10.45.143.221:8000', // Android emulator → host machine localhost
+    'http://192.168.1.6:8000', // Current working machine IP (try first)
+    'http://10.169.81.35:8000', // Android emulator → host machine localhost
     'http://localhost:8000',
     'http://127.0.0.1:8000',
     'http://172.23.148.1:8000', // Common local network

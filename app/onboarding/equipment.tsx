@@ -57,12 +57,12 @@ const EquipmentScreen = () => {
 
   const handleNext = () => {
     setEquipmentAvailable(selectedEquipment);
-    router.push('/onboarding/workout-preferences');
+    router.push('/onboarding/personalizing');
   };
 
   const handleSkip = () => {
     setEquipmentAvailable([]);
-    router.push('/onboarding/workout-preferences');
+    router.push('/onboarding/personalizing');
   };
 
   const getEquipmentByCategory = (category: string) => {

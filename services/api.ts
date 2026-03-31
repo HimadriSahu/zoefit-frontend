@@ -151,25 +151,9 @@ export interface DailyStats {
   last_updated: string;
 }
 
-// Workout Preferences Interfaces
-export interface WorkoutPreferencesData {
-  difficulty_level: 'beginner' | 'intermediate' | 'advanced';
-  workout_type_preference: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed';
-  preferred_session_duration?: number;
-  preferred_workout_days_per_week?: number;
-  equipment_available?: string[];
-}
-
-export interface WorkoutPreferencesResponse {
-  message: string;
-  preferences: WorkoutPreferencesData;
-}
-
 // Progress Tracking Interfaces
 export interface ProgressData {
   weight?: number;
-  body_fat_percentage?: number;
-  muscle_mass?: number;
   workout_streak?: number;
   total_workouts?: number;
   calories_burned?: number;
@@ -178,8 +162,6 @@ export interface ProgressData {
 export interface ProgressTracking {
   id: number;
   weight?: number;
-  body_fat_percentage?: number;
-  muscle_mass?: number;
   workout_streak: number;
   total_workouts: number;
   calories_burned: number;
@@ -246,36 +228,44 @@ class ApiService {
     this.initializeAsync();
   }
 
-  // Helper methods for enhanced error handling
   private getEndpointName(endpoint: string): string {
     const endpointMap: Record<string, string> = {
+      // Core AI Features endpoints
       '/health-metrics/': 'Health Metrics',
       '/health-metrics/get/': 'Get Health Metrics',
-      '/workout-preferences/': 'Save Workout Preferences',
-      '/workout-preferences/get/': 'Get Workout Preferences',
-      '/workout-plan/generate/': 'Generate Workout Plan',
-      '/workout-plans/': 'Get Workout Plans',
-      '/workout-complete/': 'Update Workout Completion',
-      '/meal-plan/generate/': 'Generate Meal Plan',
-      '/meal-plans/': 'Get Meal Plans',
       '/chat/': 'AI Chat',
-      '/chat/history/': 'Chat History',
+      '/chat/history/': 'Get Chat History',
       '/progress/': 'Progress Tracking',
-      '/predict-progress/': 'Predict Progress',
+      '/progress/update/': 'Update Progress Tracking',
       '/insights/': 'AI Insights',
-      '/adapt-workout/': 'Adapt Workout Plan',
-      '/analytics/user/': 'User Analytics',
+      '/predict-progress/': 'Predict Progress',
+
+      // Workout module endpoints
+      '/preferences/': 'Save Workout Preferences',
+      '/preferences/get/': 'Get Workout Preferences',
+      '/plans/generate/': 'Generate Workout Plan',
+      '/plans/': 'Get Workout Plans',
+      '/complete/': 'Update Workout Completion',
+      '/sessions/': 'Workout Sessions',
+      '/workout/progress/': 'Workout Progress',
+      '/plans/adapt/': 'Adapt Workout Plan',
+
+      // Nutrition module endpoints
+      '/meal-plans/generate/': 'Generate Meal Plan',
+      '/meal-plans/': 'Get Meal Plans',
+      '/nutrition/preferences/': 'Save Dietary Preferences',
+      '/nutrition/preferences/get/': 'Get Dietary Preferences',
+      '/nutrition/logs/': 'Nutrition Logs',
+      '/nutrition/logs/log/': 'Log Nutrition',
+      '/nutrition/progress/': 'Nutrition Progress',
+      '/nutrition/progress/update/': 'Update Nutrition Progress',
+      '/foods/search/': 'Search Foods',
+
+      // Frontend endpoints
       '/daily-stats/': 'Daily Stats',
-      '/workout-sessions/': 'Workout Sessions',
       '/dashboard/': 'Dashboard',
       '/streaks/': 'Streaks',
       '/achievements/': 'Achievements',
-      '/users/profile/': 'User Profile',
-      '/users/profile/update/': 'Update Profile',
-      '/users/profile/picture/upload/': 'Upload Profile Picture',
-      '/users/profile/picture/delete/': 'Delete Profile Picture',
-      '/users/onboarding/': 'Submit Onboarding',
-      '/users/onboarding/status/': 'Get Onboarding Status',
       '/users/profile/analytics/': 'Get Profile Analytics',
       '/users/activity/': 'Track Activity',
       '/users/activities/': 'Get Activities',
@@ -289,9 +279,8 @@ class ApiService {
       return 'Authentication';
     } else if (endpoint.startsWith('/users/')) {
       return 'User Management';
-    } else if (endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/workout-sessions/') ||
-      endpoint.startsWith('/dashboard/') || endpoint.startsWith('/achievements/') ||
-      endpoint.startsWith('/streaks')) {
+    } else if (endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/dashboard/') ||
+      endpoint.startsWith('/achievements/') || endpoint.startsWith('/streaks')) {
       return 'Frontend Features';
     } else {
       return 'AI Features';
@@ -351,14 +340,23 @@ class ApiService {
 
     // Determine the base URL based on endpoint type
     const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/login/' || endpoint === '/register/' || endpoint === '/token/refresh/' || endpoint === '/forgot-password/' || endpoint === '/logout/';
-    const isUsersEndpoint = endpoint.startsWith('/users/');
-    const isFrontendEndpoint = endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/workout-sessions/') || endpoint.startsWith('/dashboard/') || endpoint.startsWith('/achievements/') || endpoint.startsWith('/streaks/') || endpoint.startsWith('/progress-') || endpoint.startsWith('/meal-logs/') || endpoint.startsWith('/nutrition-summary/') || endpoint.startsWith('/workout-stats/');
+    const isUsersEndpoint = endpoint.startsWith('/users/') || endpoint.startsWith('/contact/') || endpoint.startsWith('/profile/') || endpoint.startsWith('/onboarding/') || endpoint.startsWith('/activity/');
+    const isFrontendEndpoint = endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/dashboard/') || endpoint.startsWith('/achievements/') || endpoint.startsWith('/streaks/');
+    const isWorkoutEndpoint = endpoint.startsWith('/workout/') || endpoint.startsWith('/sessions/') || endpoint.startsWith('/preferences/') || endpoint.startsWith('/plans/') || endpoint.startsWith('/complete/') || endpoint.startsWith('/workout-');
+    const isNutritionEndpoint = endpoint.startsWith('/meal-plans/') || endpoint.startsWith('/nutrition/') || endpoint.startsWith('/logs/') || endpoint.startsWith('/foods/') || endpoint.startsWith('/nutrition-');
+
+    // Debug logging
+    console.log('🔍 Endpoint Debug:', { endpoint, isAuthEndpoint, isUsersEndpoint, isWorkoutEndpoint, isNutritionEndpoint, isFrontendEndpoint });
 
     let baseUrl: string;
     if (isAuthEndpoint) {
       baseUrl = `${this.baseURL}/api/auth`;
     } else if (isUsersEndpoint) {
       baseUrl = `${this.baseURL}/api/users`;
+    } else if (isWorkoutEndpoint) {
+      baseUrl = `${this.baseURL}/api/workout`;
+    } else if (isNutritionEndpoint) {
+      baseUrl = `${this.baseURL}/api/nutrition`;
     } else if (isFrontendEndpoint) {
       baseUrl = `${this.baseURL}/api/frontend`;
     } else {
@@ -877,17 +875,17 @@ class ApiService {
 
   // Workout Plans
   async generateWorkoutPlan(): Promise<{ message: string; workout_plan: WorkoutPlan }> {
-    return this.request<{ message: string; workout_plan: WorkoutPlan }>('/workout-plan/generate/', {
+    return this.request<{ message: string; workout_plan: WorkoutPlan }>('/plans/generate/', {
       method: 'POST',
     }, true);
   }
 
   async getWorkoutPlans(): Promise<{ workout_plans: WorkoutPlan[] }> {
-    return this.request<{ workout_plans: WorkoutPlan[] }>('/workout-plans/', {}, true);
+    return this.request<{ workout_plans: WorkoutPlan[] }>('/plans/', {}, true);
   }
 
   async updateWorkoutCompletion(data: WorkoutCompletionData): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/workout-complete/', {
+    return this.request<{ message: string }>('/complete/', {
       method: 'POST',
       body: JSON.stringify(data),
     }, true);
@@ -1043,22 +1041,10 @@ class ApiService {
   }
 
   // Contact Information Specific Methods
-  async getContactInfo(): Promise<{ phone_number: string | null; email: string }> {
-    const response = await this.request<{ phone_number: string | null; email: string }>('/users/contact/', {}, true);
+  async getContactInfo(): Promise<{ email: string }> {
+    const response = await this.request<{ email: string }>('/users/contact/', {}, true);
     return {
-      phone_number: response.phone_number,
       email: response.email
-    };
-  }
-
-  async updateContactInfo(phoneNumber: string): Promise<{ message: string; contact_info: { phone_number: string; email: string } }> {
-    const response = await this.request<{ message: string; contact_info: { phone_number: string; email: string } }>('/users/contact/update/', {
-      method: 'PATCH',
-      body: JSON.stringify({ phone_number: phoneNumber })
-    }, true);
-    return {
-      message: response.message,
-      contact_info: response.contact_info
     };
   }
 
@@ -1097,18 +1083,6 @@ class ApiService {
     return data;
   }
 
-  // Workout Preferences
-  async saveWorkoutPreferences(data: WorkoutPreferencesData): Promise<WorkoutPreferencesResponse> {
-    return this.request<WorkoutPreferencesResponse>('/workout-preferences/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }, true);
-  }
-
-  async getWorkoutPreferences(): Promise<WorkoutPreferencesResponse> {
-    return this.request<WorkoutPreferencesResponse>('/workout-preferences/get/', {}, true);
-  }
-
   // Progress Tracking
   async getProgressTracking(): Promise<{ progress_data: ProgressTracking[] }> {
     return this.request<{ progress_data: ProgressTracking[] }>('/progress/', {}, true);
@@ -1130,14 +1104,20 @@ class ApiService {
   }
 
   // Nutrition & Meal Plans
-  async generateMealPlan(): Promise<{ message: string; meal_plan: MealPlan }> {
-    return this.request<{ message: string; meal_plan: MealPlan }>('/meal-plan/generate/', {
+  async generateMealPlan(data?: MealPlanData): Promise<{ message: string; meal_plan: MealPlan }> {
+    return this.request<{ message: string; meal_plan: MealPlan }>('/meal-plans/generate/', {
       method: 'POST',
+      body: JSON.stringify(data || {}),
     }, true);
   }
 
-  async getMealPlans(): Promise<{ meal_plans: MealPlan[] }> {
-    return this.request<{ meal_plans: MealPlan[] }>('/meal-plans/', {}, true);
+  async getMealPlans(startDate?: string, endDate?: string): Promise<{ meal_plans: MealPlan[] }> {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    const endpoint = `/meal-plans/${params.toString() ? '?' + params.toString() : ''}`;
+    return this.request<{ meal_plans: MealPlan[] }>(endpoint, {}, true);
   }
 
   async updateMealPlanRating(mealPlanId: string, rating: number, feedback?: string): Promise<{ message: string }> {
@@ -1168,32 +1148,32 @@ class ApiService {
   }
 
   // Workout Session Management
-  async getWorkoutSessions(startDate?: string, endDate?: string, completed?: string): Promise<{ results: any[]; count: number; next: string | null; previous: string | null }> {
+  async getWorkoutSessions(startDate?: string, endDate?: string, completed?: string): Promise<{ workout_sessions: any[]; count: number; next: string | null; previous: string | null }> {
     const params = new URLSearchParams();
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
     if (completed) params.append('completed', completed);
 
-    const endpoint = `/workout-sessions/${params.toString() ? '?' + params.toString() : ''}`;
+    const endpoint = `/sessions/${params.toString() ? '?' + params.toString() : ''}`;
     return this.request<any>(endpoint, {}, true);
   }
 
   async createWorkoutSession(sessionData: any): Promise<any> {
-    return this.request<any>('/workout-sessions/', {
+    return this.request<any>('/sessions/', {
       method: 'POST',
       body: JSON.stringify(sessionData),
     }, true);
   }
 
   async updateWorkoutSession(sessionId: number, sessionData: any): Promise<any> {
-    return this.request<any>(`/workout-sessions/${sessionId}/`, {
+    return this.request<any>(`/sessions/${sessionId}/`, {
       method: 'PUT',
       body: JSON.stringify(sessionData),
     }, true);
   }
 
   async deleteWorkoutSession(sessionId: number): Promise<{ message: string }> {
-    return this.request<{ message: string }>(`/workout-sessions/${sessionId}/`, {
+    return this.request<{ message: string }>(`/sessions/${sessionId}/`, {
       method: 'DELETE',
     }, true);
   }

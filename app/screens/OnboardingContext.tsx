@@ -10,30 +10,13 @@ export interface OnboardingData {
   heightCm: number | null;
   weightKg: number | null;
   goal: NutrioGoal | null;
-  breakfastTime: string | null;
-  dinnerTime: string | null;
-  // User Profile fields
-  phoneNumber: string | null;
-  profilePicture: string | null;
-  bio: string | null;
-  location: string | null;
-  // Contact Information fields
-  contactInfo: {
-    phone: string;
-  } | null;
   // Health Metrics fields
   activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null;
   dietaryPreferences: Record<string, any> | null;
   medicalConditions: string[] | null;
   allergies: string[] | null;
   targetWeight: number | null;
-  // Workout Plan fields
-  difficultyLevel: 'beginner' | 'intermediate' | 'advanced' | null;
-  workoutTypePreference: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed' | null;
   equipmentAvailable: string[] | null;
-  // Progress Tracking fields
-  bodyFatPercentage: number | null;
-  muscleMass: number | null;
 }
 
 const defaultData: OnboardingData = {
@@ -42,28 +25,13 @@ const defaultData: OnboardingData = {
   heightCm: null,
   weightKg: null,
   goal: null,
-  breakfastTime: null,
-  dinnerTime: null,
-  // User Profile fields
-  phoneNumber: null,
-  profilePicture: null,
-  bio: null,
-  location: null,
-  // Contact Information fields
-  contactInfo: null,
   // Health Metrics fields
   activityLevel: null,
   dietaryPreferences: null,
   medicalConditions: null,
   allergies: null,
   targetWeight: null,
-  // Workout Plan fields
-  difficultyLevel: null,
-  workoutTypePreference: null,
   equipmentAvailable: null,
-  // Progress Tracking fields
-  bodyFatPercentage: null,
-  muscleMass: null,
 };
 
 interface OnboardingContextType {
@@ -73,28 +41,13 @@ interface OnboardingContextType {
   setHeightCm: (h: number) => void;
   setWeightKg: (w: number) => void;
   setGoal: (g: NutrioGoal) => void;
-  setBreakfastTime: (t: string) => void;
-  setDinnerTime: (t: string) => void;
-  // User Profile setters
-  setPhoneNumber: (p: string) => void;
-  setProfilePicture: (p: string) => void;
-  setBio: (b: string) => void;
-  setLocation: (l: string) => void;
-  // Contact Information setters
-  setContactInfo: (c: OnboardingData['contactInfo']) => void;
   // Health Metrics setters
   setActivityLevel: (a: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active') => void;
   setDietaryPreferences: (d: Record<string, any>) => void;
   setMedicalConditions: (m: string[]) => void;
   setAllergies: (a: string[]) => void;
   setTargetWeight: (t: number) => void;
-  // Workout Plan setters
-  setDifficultyLevel: (d: 'beginner' | 'intermediate' | 'advanced') => void;
-  setWorkoutTypePreference: (w: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed') => void;
   setEquipmentAvailable: (e: string[]) => void;
-  // Progress Tracking setters
-  setBodyFatPercentage: (b: number) => void;
-  setMuscleMass: (m: number) => void;
   reset: () => Promise<void>;
   isOnboardingComplete: () => boolean;
 }
@@ -148,28 +101,13 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const setHeightCm = (heightCm: number) => setData((p) => ({ ...p, heightCm }));
   const setWeightKg = (weightKg: number) => setData((p) => ({ ...p, weightKg }));
   const setGoal = (goal: NutrioGoal) => setData((p) => ({ ...p, goal }));
-  const setBreakfastTime = (breakfastTime: string) => setData((p) => ({ ...p, breakfastTime }));
-  const setDinnerTime = (dinnerTime: string) => setData((p) => ({ ...p, dinnerTime }));
-  // User Profile setters
-  const setPhoneNumber = (phoneNumber: string) => setData((p) => ({ ...p, phoneNumber }));
-  const setProfilePicture = (profilePicture: string) => setData((p) => ({ ...p, profilePicture }));
-  const setBio = (bio: string) => setData((p) => ({ ...p, bio }));
-  const setLocation = (location: string) => setData((p) => ({ ...p, location }));
-  // Contact Information setters
-  const setContactInfo = (contactInfo: OnboardingData['contactInfo']) => setData((p) => ({ ...p, contactInfo }));
   // Health Metrics setters
   const setActivityLevel = (activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active') => setData((p) => ({ ...p, activityLevel }));
   const setDietaryPreferences = (dietaryPreferences: Record<string, any>) => setData((p) => ({ ...p, dietaryPreferences }));
   const setMedicalConditions = (medicalConditions: string[]) => setData((p) => ({ ...p, medicalConditions }));
   const setAllergies = (allergies: string[]) => setData((p) => ({ ...p, allergies }));
   const setTargetWeight = (targetWeight: number) => setData((p) => ({ ...p, targetWeight }));
-  // Workout Plan setters
-  const setDifficultyLevel = (difficultyLevel: 'beginner' | 'intermediate' | 'advanced') => setData((p) => ({ ...p, difficultyLevel }));
-  const setWorkoutTypePreference = (workoutTypePreference: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'mixed') => setData((p) => ({ ...p, workoutTypePreference }));
   const setEquipmentAvailable = (equipmentAvailable: string[]) => setData((p) => ({ ...p, equipmentAvailable }));
-  // Progress Tracking setters
-  const setBodyFatPercentage = (bodyFatPercentage: number) => setData((p) => ({ ...p, bodyFatPercentage }));
-  const setMuscleMass = (muscleMass: number) => setData((p) => ({ ...p, muscleMass }));
   const reset = async () => {
     setData(defaultData);
     try {
@@ -185,9 +123,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       data.birthday &&
       data.heightCm &&
       data.weightKg &&
-      data.goal &&
-      data.breakfastTime &&
-      data.dinnerTime
+      data.goal
     );
   };
 
@@ -200,28 +136,13 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         setHeightCm,
         setWeightKg,
         setGoal,
-        setBreakfastTime,
-        setDinnerTime,
-        // User Profile setters
-        setPhoneNumber,
-        setProfilePicture,
-        setBio,
-        setLocation,
-        // Contact Information setters
-        setContactInfo,
         // Health Metrics setters
         setActivityLevel,
         setDietaryPreferences,
         setMedicalConditions,
         setAllergies,
         setTargetWeight,
-        // Workout Plan setters
-        setDifficultyLevel,
-        setWorkoutTypePreference,
         setEquipmentAvailable,
-        // Progress Tracking setters
-        setBodyFatPercentage,
-        setMuscleMass,
         reset,
         isOnboardingComplete,
       }}
