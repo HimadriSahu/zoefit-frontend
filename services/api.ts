@@ -191,6 +191,7 @@ export interface MealPlan {
   fat: number;
   generated_by_ai: boolean;
   confidence_score: number;
+  approach?: 'ml_based' | 'rule_based' | 'hybrid' | 'emergency_fallback';
   user_rating?: number;
   user_feedback?: string;
 }
@@ -341,9 +342,11 @@ class ApiService {
     // Determine the base URL based on endpoint type
     const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/login/' || endpoint === '/register/' || endpoint === '/token/refresh/' || endpoint === '/forgot-password/' || endpoint === '/logout/';
     const isUsersEndpoint = endpoint.startsWith('/users/') || endpoint.startsWith('/contact/') || endpoint.startsWith('/profile/') || endpoint.startsWith('/onboarding/') || endpoint.startsWith('/activity/');
-    const isFrontendEndpoint = endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/dashboard/') || endpoint.startsWith('/achievements/') || endpoint.startsWith('/streaks/');
+    const isFrontendEndpoint = endpoint.startsWith('/daily-stats/') || endpoint.startsWith('/dashboard/') ||
+      endpoint.startsWith('/achievements/') || endpoint.startsWith('/streaks');
     const isWorkoutEndpoint = endpoint.startsWith('/workout/') || endpoint.startsWith('/sessions/') || endpoint.startsWith('/preferences/') || endpoint.startsWith('/plans/') || endpoint.startsWith('/complete/') || endpoint.startsWith('/workout-');
     const isNutritionEndpoint = endpoint.startsWith('/meal-plans/') || endpoint.startsWith('/nutrition/') || endpoint.startsWith('/logs/') || endpoint.startsWith('/foods/') || endpoint.startsWith('/nutrition-');
+    const isAIEndpoint = endpoint.startsWith('/health-metrics/') || endpoint.startsWith('/meal-plan/') || endpoint.startsWith('/meal-plans/') || endpoint.startsWith('/chat/') || endpoint.startsWith('/progress/') || endpoint.startsWith('/insights/') || endpoint.startsWith('/analytics/') || endpoint.startsWith('/ml/') || endpoint.startsWith('/predict-') || endpoint.startsWith('/adapt-');
 
     // Debug logging
     console.log('🔍 Endpoint Debug:', { endpoint, isAuthEndpoint, isUsersEndpoint, isWorkoutEndpoint, isNutritionEndpoint, isFrontendEndpoint });
@@ -357,13 +360,24 @@ class ApiService {
       baseUrl = `${this.baseURL}/api/workout`;
     } else if (isNutritionEndpoint) {
       baseUrl = `${this.baseURL}/api/nutrition`;
+    } else if (isAIEndpoint) {
+      baseUrl = `${this.baseURL}/api/ai`;
     } else if (isFrontendEndpoint) {
       baseUrl = `${this.baseURL}/api/frontend`;
     } else {
       baseUrl = `${this.baseURL}/api/ai`;
     }
 
-    const url = isAuthEndpoint ? `${baseUrl}${endpoint.replace('/auth/', '/')}` : `${baseUrl}${endpoint}`;
+    // Remove the prefix from endpoint to avoid duplication
+    let cleanEndpoint = endpoint;
+    if (isUsersEndpoint) cleanEndpoint = endpoint.replace('/users/', '');
+    else if (isWorkoutEndpoint) cleanEndpoint = endpoint.replace('/workout/', '');
+    else if (isNutritionEndpoint) cleanEndpoint = endpoint.replace('/nutrition/', '');
+    else if (isFrontendEndpoint) cleanEndpoint = endpoint.replace('/frontend/', '');
+    else if (isAIEndpoint) cleanEndpoint = endpoint; // AI endpoints like health-metrics don't have prefix to remove
+    else if (!isAuthEndpoint) cleanEndpoint = endpoint.replace('/ai/', '');
+
+    const url = isAuthEndpoint ? `${baseUrl}${endpoint.replace('/auth/', '/')}` : `${baseUrl}${cleanEndpoint.startsWith('/') ? '' : '/'}${cleanEndpoint}`;
 
     console.log('🌐 API Request:', { url, method: options.method || 'GET', useAuth });
 
@@ -795,7 +809,12 @@ class ApiService {
         await this.clearAuthData();
         // Notify all subscribers that refresh failed
         this.notifySubscribers(null);
-        return null;
+        // Throw a specific error that can be caught by UI components
+        throw new ApiError('Authentication expired. Please log in again.', 401, {
+          code: 'AUTH_EXPIRED',
+          detail: 'Your session has expired. Please log in again to continue.',
+          requires_relogin: true
+        });
       } else {
         console.log('⚠️ Token refresh failed due to network issues, keeping existing tokens');
         // For network issues, don't clear tokens and let retry mechanism handle it
@@ -844,32 +863,28 @@ class ApiService {
 
   async getHealthMetrics(): Promise<HealthMetricsResponse> {
     try {
-      return await this.request<HealthMetricsResponse>('/health-metrics/get/');
+      return await this.request<HealthMetricsResponse>('/health-metrics/get/', {}, true);
     } catch (error: any) {
-      // If no health metrics found, return default values
-      if (error.status === 404 ||
-        error.message?.includes('No HealthMetrics matches') ||
-        error.message?.includes('Health metrics not found') ||
-        error.message?.includes('health profile')) {
-        console.log('📊 No health metrics found, using defaults');
-        return {
-          message: 'Default health metrics',
-          metrics: {
-            height: 170,
-            weight: 70,
-            bmi: 24.2,
-            fitness_goal: 'maintenance',
-            activity_level: 'moderate',
-            daily_calories: 2000,
-            bmi_category: 'Normal',
-            dietary_preferences: {},
-            medical_conditions: [],
-            allergies: [],
-            target_weight: undefined
-          }
-        };
-      }
-      throw error;
+      console.error('❌ Error fetching health metrics:', error);
+      
+      // For any error (network, auth, etc.), return default values to prevent undefined errors
+      console.log('📊 Using default health metrics due to error');
+      return {
+        message: 'Default health metrics',
+        metrics: {
+          height: 170,
+          weight: 70,
+          bmi: 24.2,
+          fitness_goal: 'maintenance',
+          activity_level: 'moderate',
+          daily_calories: 2000,
+          bmi_category: 'Normal',
+          dietary_preferences: {},
+          medical_conditions: [],
+          allergies: [],
+          target_weight: 70
+        }
+      };
     }
   }
 
@@ -941,27 +956,19 @@ class ApiService {
         throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
       }
 
-      // Clean and validate data
+      // Clean and validate data - only include fields that exist in UserProfile model
       const cleanedData = {
         gender: data.gender,
-        date_of_birth: data.date_of_birth || null,
         height: Number(data.height) || null,
         weight: Number(data.weight) || null,
         fitness_goal: data.fitness_goal,
         target_weight: Number(data.target_weight) || null,
         activity_level: data.activity_level || 'moderate',
-        breakfast_time: data.breakfast_time || null,
-        dinner_time: data.dinner_time || null,
-        phone_number: data.phone_number || null,
-        bio: data.bio || null,
-        location: data.location || null,
+        workout_duration: Number(data.workout_duration) || null,
+        workout_types: Array.isArray(data.workout_types) ? data.workout_types : [],
         dietary_preferences: data.dietary_preferences || {},
         medical_conditions: Array.isArray(data.medical_conditions) ? data.medical_conditions : [],
         allergies: Array.isArray(data.allergies) ? data.allergies : [],
-        difficulty_level: data.difficulty_level || 'beginner',
-        workout_type_preference: data.workout_type_preference || 'mixed',
-        body_fat_percentage: Number(data.body_fat_percentage) || null,
-        muscle_mass: Number(data.muscle_mass) || null,
       };
 
       console.log('📤 Submitting validated onboarding data:', cleanedData);
@@ -1105,10 +1112,46 @@ class ApiService {
 
   // Nutrition & Meal Plans
   async generateMealPlan(data?: MealPlanData): Promise<{ message: string; meal_plan: MealPlan }> {
-    return this.request<{ message: string; meal_plan: MealPlan }>('/meal-plans/generate/', {
-      method: 'POST',
-      body: JSON.stringify(data || {}),
-    }, true);
+    try {
+      // Always fetch current health metrics for personalization
+      const healthMetrics = await this.getHealthMetrics();
+
+      // Combine provided data with current health metrics
+      const enhancedData = {
+        ...data,
+        // Include user-specific health metrics for personalization with proper null checks
+        user_height: healthMetrics?.metrics?.height || 170,
+        user_weight: healthMetrics?.metrics?.weight || 70,
+        user_fitness_goal: healthMetrics?.metrics?.fitness_goal || 'maintenance',
+        user_activity_level: healthMetrics?.metrics?.activity_level || 'moderate',
+        user_target_weight: healthMetrics?.metrics?.target_weight || healthMetrics?.metrics?.weight || 70,
+        user_dietary_preferences: healthMetrics?.metrics?.dietary_preferences || {},
+        user_allergies: healthMetrics?.metrics?.allergies || [],
+        user_daily_calories: healthMetrics?.metrics?.daily_calories || 2000,
+        // Force fresh generation with current data
+        refresh_personalization: true,
+        generation_timestamp: new Date().toISOString()
+      };
+
+      console.log('🍽️ Generating personalized meal plan with user data:', enhancedData);
+
+      return this.request<{ message: string; meal_plan: MealPlan }>('/meal-plan/generate/', {
+        method: 'POST',
+        body: JSON.stringify(enhancedData),
+      }, true);
+    } catch (error: any) {
+      console.error('❌ Failed to fetch health metrics for meal plan generation:', error);
+      // Fallback to basic meal plan generation without personalization
+      console.log('🔄 Falling back to basic meal plan generation');
+      return this.request<{ message: string; meal_plan: MealPlan }>('/meal-plan/generate/', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          fallback_mode: true,
+          generation_timestamp: new Date().toISOString()
+        }),
+      }, true);
+    }
   }
 
   async getMealPlans(startDate?: string, endDate?: string): Promise<{ meal_plans: MealPlan[] }> {
@@ -1124,6 +1167,33 @@ class ApiService {
     return this.request<{ message: string }>('/meal-plan/rating/', {
       method: 'POST',
       body: JSON.stringify({ meal_plan_id: mealPlanId, rating, feedback }),
+    }, true);
+  }
+
+  // ML Feedback System
+  async submitMLFeedback(
+    mealPlanId: string,
+    rating: number,
+    helpful: boolean,
+    accurate: boolean,
+    comments?: string,
+    suggestions?: string,
+    accepted?: boolean,
+    modified?: boolean
+  ): Promise<{ message: string }> {
+    return this.request<{ message: string }>('/ml/feedback/', {
+      method: 'POST',
+      body: JSON.stringify({
+        meal_plan_id: mealPlanId,
+        rating,
+        helpful,
+        accurate,
+        comments,
+        suggestions,
+        accepted,
+        modified,
+        feedback_timestamp: new Date().toISOString()
+      }),
     }, true);
   }
 

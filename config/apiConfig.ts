@@ -8,11 +8,11 @@ const API_CONFIG = {
   // Development URLs in order of preference
   development: [
     'http://192.168.1.6:8000', // Current working machine IP (try first)
-    'http://10.169.81.35:8000', // Android emulator → host machine localhost
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-    'http://172.23.148.1:8000', // Common local network
     'http://192.168.29.36:8000',
+    'http://10.169.81.35:8000', // Android emulator → host machine localhost
+    'http://172.23.148.1:8000', // Common local network
     'http://10.45.13.21:8000',
     'http://192.168.0.192:8000', // Alternative network IP
   ],
@@ -82,13 +82,13 @@ export const getApiBaseUrlSync = (): string => {
   // Return the most likely working URL based on platform and network patterns
   if (isAndroid) {
     // Android emulator typically uses 10.0.2.2 for host, but also try common network IPs
-    return 'http://192.168.0.192:8000'; // Common Android network IP
+    return 'http://192.168.1.6:8000'; // Working network IP
   } else if (isIOS) {
     // iOS simulator uses localhost
-    return 'http://127.0.0.1:8000';
+    return 'http://192.168.1.6:8000'; // Working network IP
   } else {
-    // Web/other - try localhost first
-    return 'http://localhost:8000';
+    // Web/other - try the working IP first
+    return 'http://192.168.1.6:8000';
   }
 };
 

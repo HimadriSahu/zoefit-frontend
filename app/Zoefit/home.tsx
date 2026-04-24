@@ -267,10 +267,12 @@ const HomeScreen = () => {
 					setAiInsight('Welcome to ZoeFit! Complete your profile to get personalized insights.');
 				}
 			} catch (error: any) {
-				console.warn('⚠️ Could not load AI insights:', error);
-				// Check if error is related to missing health metrics
+				console.warn('Could not load AI insights:', error);
+				// Check if error is related to missing health metrics or generic endpoint error
 				if (error?.message?.includes('Health metrics not found') ||
-					error?.message?.includes('health profile')) {
+					error?.message?.includes('health profile') ||
+					error?.message?.includes('create your health profile first') ||
+					error?.message?.includes('Endpoint not found: AI Insights')) {
 					setAiInsight('Complete your health profile to get personalized AI insights and recommendations.');
 					Alert.alert(
 						'Complete Your Profile',

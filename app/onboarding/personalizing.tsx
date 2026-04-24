@@ -57,27 +57,13 @@ export default function PersonalizingScreen() {
         target_weight: onboardingData.targetWeight,
         activity_level: onboardingData.activityLevel,
 
-        // Schedule
-        breakfast_time: onboardingData.breakfastTime,
-        dinner_time: onboardingData.dinnerTime,
-
-        // Contact and profile
-        phone_number: onboardingData.phoneNumber,
-        bio: onboardingData.bio,
-        location: onboardingData.location,
-
         // Health and dietary
         dietary_preferences: onboardingData.dietaryPreferences,
         medical_conditions: onboardingData.medicalConditions,
         allergies: onboardingData.allergies,
 
-        // Workout preferences
-        difficulty_level: onboardingData.difficultyLevel,
-        workout_type_preference: onboardingData.workoutTypePreference,
-
-        // Progress tracking
-        body_fat_percentage: onboardingData.bodyFatPercentage,
-        muscle_mass: onboardingData.muscleMass,
+        // Equipment
+        equipment_available: onboardingData.equipmentAvailable,
       };
 
       await apiService.submitOnboardingData(comprehensiveOnboardingData);
@@ -93,13 +79,8 @@ export default function PersonalizingScreen() {
 
       await apiService.createOrUpdateHealthMetrics(healthMetricsData);
 
-      // Step 3: Update comprehensive profile with additional data
+      // Step 3: Update comprehensive profile with available data
       const profileUpdateData = {
-        first_name: '', // Will be filled from user registration
-        last_name: '',
-        phone_number: onboardingData.phoneNumber,
-        bio: onboardingData.bio,
-        location: onboardingData.location,
         fitness_goal: onboardingData.goal,
         height: onboardingData.heightCm,
         weight: onboardingData.weightKg,
@@ -108,7 +89,7 @@ export default function PersonalizingScreen() {
       await apiService.updateComprehensiveProfile(profileUpdateData);
 
     } catch (error) {
-      console.error('❌ Onboarding submission failed:', error);
+      console.error('Onboarding submission failed:', error);
       Alert.alert(
         'Setup Incomplete',
         'There was an error setting up your profile. Please try again.',

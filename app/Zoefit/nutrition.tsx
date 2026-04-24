@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Dimensions, TextStyle, ViewStyle, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiService as nutritionAPI } from '../../services/api';
+import { aiService } from '../../services/ai';
 import { useTheme } from '../screens/ThemeContext';
+import { ErrorHandler } from '../../utils/errorHandler';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -48,22 +50,27 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
-    alignItems: 'center',
   },
   personalizeButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
     color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statsContainer: {
     padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 15,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   statsTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 15,
-    letterSpacing: 0.5,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -71,155 +78,211 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: 18,
     padding: 15,
+    borderRadius: 12,
     marginHorizontal: 5,
-    alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   statNumber: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    marginBottom: 5,
   },
   statLabel: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
+    fontSize: 14,
+    marginBottom: 5,
   },
   statGoal: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    marginBottom: 8,
   },
   progressBar: {
-    width: '100%',
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 2,
-    marginTop: 8,
+    height: 6,
+    borderRadius: 3,
+    marginBottom: 10,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#a78bfa',
-    borderRadius: 2,
+    borderRadius: 3,
+  },
+  mlConfidenceContainer: {
+    padding: 15,
+    marginHorizontal: 20,
+    marginTop: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  mlConfidenceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  mlConfidenceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  approachBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  approachBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  confidenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  confidenceLabel: {
+    fontSize: 14,
+    marginRight: 10,
+  },
+  confidenceBar: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  confidenceFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  confidenceValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  feedbackButton: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  feedbackButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   quickActionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 20,
+    paddingHorizontal: 20,
+    marginTop: 15,
   },
   quickActionCard: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: 18,
     padding: 15,
-    width: '100%',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   quickActionLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 10,
   },
   waterButtonsRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 7,
+    justifyContent: 'space-between',
   },
   waterButton: {
-    backgroundColor: '#667eea',
-    borderRadius: 25,
     width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   waterButtonText: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
   },
   waterCount: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    minWidth: 50,
-    textAlign: 'center',
+    fontWeight: '600',
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     paddingHorizontal: 20,
+    marginTop: 15,
+    gap: 10,
   },
   actionButton: {
     flex: 1,
-    borderRadius: 10,
-    marginHorizontal: 5,
+    height: 50,
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   actionButtonGradient: {
-    paddingVertical: 12,
-    borderRadius: 10,
+    flex: 1,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   actionButtonText: {
-    fontSize: 13,
-    fontWeight: 'bold',
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   searchContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: 15,
   },
   searchInput: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
+    height: 45,
     borderRadius: 10,
     paddingHorizontal: 15,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#fff',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    fontSize: 16,
   },
   mealsContainer: {
     padding: 20,
+    marginTop: 15,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 15,
   },
   mealCard: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: 15,
     padding: 15,
+    borderRadius: 12,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   mealHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   mealName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '600',
     marginBottom: 5,
   },
   mealMeta: {
@@ -228,128 +291,130 @@ const styles = StyleSheet.create({
   },
   mealTypeBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
     marginRight: 10,
   },
   mealTypeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
     color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   mealTime: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
   },
   calorieBadge: {
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    backgroundColor: 'rgba(102, 126, 234, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   calorieText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#667eea',
   },
   macrosContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 15,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 10,
     padding: 10,
+    borderRadius: 8,
+    marginVertical: 10,
   },
   macroItem: {
     alignItems: 'center',
+    flex: 1,
   },
   macroValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
   },
   macroLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
+    fontSize: 12,
   },
   ingredientsContainer: {
-    marginBottom: 15,
+    marginTop: 10,
   },
   ingredientsTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 5,
   },
   ingredientsList: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    lineHeight: 16,
+    fontSize: 14,
+    lineHeight: 20,
   },
   logButton: {
-    borderRadius: 10,
-  },
-  logButtonGradient: {
-    padding: 12,
-    borderRadius: 10,
-    alignItems: 'center',
+    marginTop: 15,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   logButtonActive: {
-    opacity: 0.7,
+    opacity: 0.6,
+  },
+  logButtonGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
   logButtonText: {
+    color: '#fff',
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  tipsContainer: {
-    padding: 20,
-    margin: 20,
-    borderRadius: 15,
-  },
-  tipsGradient: {
-    padding: 20,
-    borderRadius: 15,
-  },
-  tipsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-  },
-  tip: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 5,
-    opacity: 0.95,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   noResultsContainer: {
-    paddingVertical: 40,
+    padding: 40,
     alignItems: 'center',
   },
   noResultsText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: 16,
+    textAlign: 'center',
   },
   loggedMealsContainer: {
-    padding: 20,
-    backgroundColor: 'rgba(167,139,250,0.1)',
+    padding: 15,
     marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 15,
+    marginTop: 15,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.3)',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   loggedMealsTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '600',
     marginBottom: 5,
   },
   loggedCaloriesText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+  },
+  tipsContainer: {
+    marginHorizontal: 20,
+    marginTop: 15,
+    marginBottom: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  tipsGradient: {
+    padding: 20,
+  },
+  tipsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 15,
+  },
+  tip: {
+    fontSize: 14,
+    color: '#fff',
+    marginBottom: 8,
+    paddingLeft: 10,
   },
   modalOverlay: {
     flex: 1,
@@ -358,39 +423,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#1a1f2e',
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 25,
-    width: '80%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 15,
+    marginBottom: 20,
+    textAlign: 'center',
   },
   modalInput: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 10,
+    height: 45,
+    borderRadius: 8,
+    paddingHorizontal: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 12,
-  },
-  goalInputContainer: {
+    fontSize: 16,
     marginBottom: 15,
-  },
-  goalLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 5,
   },
   modalButtonsRow: {
     flexDirection: 'row',
@@ -399,96 +455,285 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    height: 45,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginHorizontal: 5,
   },
-  modalButtonGradient: {
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   modalButtonPrimary: {
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
+    borderWidth: 0,
   },
-  modalButtonText: {
+  modalButtonGradient: {
+    flex: 1,
+    height: 45,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  goalInputContainer: {
+    marginBottom: 15,
+  },
+  goalLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 15,
+  },
+  starButton: {
+    padding: 5,
+  },
+  starText: {
+    fontSize: 24,
+  },
+  booleanContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 15,
+  },
+  booleanButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+    borderWidth: 1,
+  },
+  booleanButtonActive: {
+    borderWidth: 1,
+  },
+  booleanButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
   },
 });
 
+interface Meal {
+  id: string;
+  name: string;
+  type: string;
+  time: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  ingredients: string[];
+  foods?: any[];
+}
+
+interface TodayStats {
+  calories: number;
+  protein: number;
+  water: number;
+  goal: number;
+  proteinGoal: number;
+  waterGoal: number;
+}
+
 const NutritionScreen = () => {
   const { theme, isDarkMode } = useTheme();
-  const [, setSelectedMeal] = useState<string | null>(null);
-  const [waterIntake, setWaterIntake] = useState(6);
-  const [waterGoal, setWaterGoal] = useState(8);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loggedMeals, setLoggedMeals] = useState<string[]>([]);
-  const [showCustomMealModal, setShowCustomMealModal] = useState(false);
-  const [showGoalsModal, setShowGoalsModal] = useState(false);
-  const [customMealName, setCustomMealName] = useState('');
-  const [customMealCalories, setCustomMealCalories] = useState('');
-  const [calorieGoal, setCalorieGoal] = useState(2000);
-  const [proteinGoal, setProteinGoal] = useState(120);
-  const [loading, setLoading] = useState(true);
-
   const router = useRouter();
 
-  // Sample data - in real app this would come from API
-  const [meals] = useState([
-    {
-      id: '1',
-      name: 'Grilled Chicken Salad',
-      type: 'Lunch',
-      time: '12:30 PM',
-      calories: 350,
-      protein: 35,
-      carbs: 15,
-      fat: 12,
-      ingredients: ['Chicken breast', 'Mixed greens', 'Cherry tomatoes', 'Cucumber', 'Olive oil']
-    },
-    {
-      id: '2',
-      name: 'Protein Smoothie Bowl',
-      type: 'Breakfast',
-      time: '8:00 AM',
-      calories: 280,
-      protein: 25,
-      carbs: 35,
-      fat: 8,
-      ingredients: ['Protein powder', 'Banana', 'Berries', 'Almond milk', 'Chia seeds']
-    },
-    {
-      id: '3',
-      name: 'Quinoa Power Bowl',
-      type: 'Dinner',
-      time: '7:00 PM',
-      calories: 420,
-      protein: 28,
-      carbs: 45,
-      fat: 15,
-      ingredients: ['Quinoa', 'Black beans', 'Avocado', 'Sweet potato', 'Tahini dressing']
-    }
-  ]);
+  // State variables
+  const [loading, setLoading] = useState(false);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [loggedMeals, setLoggedMeals] = useState<string[]>([]);
+  const [selectedMeal, setSelectedMeal] = useState<string | null>(null);
+  const [waterIntake, setWaterIntake] = useState(4);
+  const [waterGoal, setWaterGoal] = useState(8);
+  const [calorieGoal, setCalorieGoal] = useState(2000);
+  const [proteinGoal, setProteinGoal] = useState(120);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showCustomMealModal, setShowCustomMealModal] = useState(false);
+  const [showGoalsModal, setShowGoalsModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
-  const todayStats = {
-    calories: 1450,
-    goal: calorieGoal,
-    protein: 85,
-    proteinGoal: proteinGoal,
+  // Custom meal form state
+  const [customMealName, setCustomMealName] = useState('');
+  const [customMealCalories, setCustomMealCalories] = useState('');
+
+  // Feedback state
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackHelpful, setFeedbackHelpful] = useState(true);
+  const [feedbackAccurate, setFeedbackAccurate] = useState(true);
+  const [feedbackComments, setFeedbackComments] = useState('');
+  const [feedbackSuggestions, setFeedbackSuggestions] = useState('');
+  const [currentMealPlanId, setCurrentMealPlanId] = useState('');
+
+  // ML-related state
+  const [mealPlanApproach, setMealPlanApproach] = useState('unknown');
+  const [confidenceScore, setConfidenceScore] = useState(0);
+
+  const todayStats: TodayStats = {
+    calories: loggedMeals.reduce((total, mealId) => {
+      const meal = meals.find(m => m.id === mealId);
+      return total + (meal?.calories || 0);
+    }, 0),
+    protein: 45,
     water: waterIntake,
-    waterGoal: waterGoal
+    goal: calorieGoal,
+    proteinGoal: proteinGoal,
+    waterGoal: waterGoal,
+  };
+
+  // Fetch personalized meal plan from backend
+  const fetchPersonalizedMealPlan = async () => {
+    setLoading(true);
+    try {
+      // Check if user has health metrics, create default if not
+      try {
+        const healthMetrics = await nutritionAPI.getHealthMetrics();
+        console.log('Health metrics found:', healthMetrics);
+      } catch (error: any) {
+        console.log('Health metrics not found, creating default...', error.message);
+        const height = 170; // cm
+        const weight = 70; // kg
+
+        try {
+          const result = await nutritionAPI.createOrUpdateHealthMetrics({
+            height: height,
+            weight: weight,
+            fitness_goal: 'maintenance',
+            activity_level: 'moderate',
+            dietary_preferences: {},
+            allergies: [],
+            target_weight: weight
+          });
+          console.log('Health metrics created successfully:', result);
+        } catch (createError: any) {
+          console.error('Failed to create health metrics:', createError);
+          throw createError; // Re-throw to stop meal plan generation
+        }
+      }
+
+      // Get today's date
+      const today = new Date().toISOString().split('T')[0];
+
+      // Generate meal plan using AI service with enhanced personalization
+      const response = await aiService.generateMealPlan();
+
+      console.log('Meal plan response:', response);
+
+      if (response && response.meal_plan) {
+        const mealPlan = response.meal_plan;
+
+        // Transform backend meal data to frontend format
+        const timestamp = Date.now();
+        const transformedMeals = mealPlan.meals.map((meal: any, index: number) => ({
+          id: meal.id || `${mealPlan.id || 'meal'}-${index}-${timestamp}`,
+          name: meal.name || `Meal ${index + 1}`,
+          type: meal.name?.toLowerCase().includes('breakfast') ? 'Breakfast' :
+            meal.name?.toLowerCase().includes('lunch') ? 'Lunch' :
+              meal.name?.toLowerCase().includes('dinner') ? 'Dinner' : 'Snack',
+          time: meal.name?.toLowerCase().includes('breakfast') ? '8:00 AM' :
+            meal.name?.toLowerCase().includes('lunch') ? '12:30 PM' :
+              meal.name?.toLowerCase().includes('dinner') ? '7:00 PM' : '3:00 PM',
+          calories: meal.estimated_calories || 0,
+          protein: 0, // Will be calculated from foods
+          carbs: 0, // Will be calculated from foods
+          fat: 0, // Will be calculated from foods
+          ingredients: meal.foods?.map((food: any) => food.name) || [],
+          foods: meal.foods || [], // Corrected indentation here
+        }));
+
+        // Calculate macros from foods
+        transformedMeals.forEach((meal: any) => {
+          meal.protein = meal.foods.reduce((sum: number, food: any) => sum + (food.protein || 0), 0);
+          meal.carbs = meal.foods.reduce((sum: number, food: any) => sum + (food.carbs || 0), 0);
+          meal.fat = meal.foods.reduce((sum: number, food: any) => sum + (food.fat || 0), 0);
+        });
+
+        setMeals(transformedMeals);
+        setMealPlanApproach(mealPlan.approach || 'unknown');
+        setConfidenceScore(mealPlan.confidence_score || 0);
+        setCurrentMealPlanId(mealPlan.id?.toString() || '');
+
+        // Update stats with actual data from meal plan
+        setCalorieGoal(mealPlan.total_calories || 2000);
+        setProteinGoal(Math.round(mealPlan.protein || 120));
+
+        console.log(`Meal plan generated using ${mealPlan.approach} approach with confidence ${mealPlan.confidence_score}`);
+
+        // Show ML approach info to user
+        if (mealPlan.approach === 'ml_based') {
+          Alert.alert(
+            'Personalized Meal Plan',
+            `Generated using AI with ${Math.round((mealPlan.confidence_score || 0) * 100)}% confidence based on your profile!`,
+            [{ text: 'OK' }]
+          );
+        }
+      }
+    } catch (error: any) {
+      // Use global error handler for consistent error management
+      ErrorHandler.handleError(error, 'fetchPersonalizedMealPlan');
+
+      // For non-auth errors, show fallback message
+      if (!ErrorHandler.isAuthenticationError(error) && !ErrorHandler.isNetworkError(error)) {
+        Alert.alert(
+          'Meal Plan',
+          'Using sample meal plans. Please complete your profile for personalized recommendations.',
+          [{ text: 'OK' }]
+        );
+      }
+
+      // Fallback to sample meals if API fails
+      const fallbackTimestamp = Date.now();
+      setMeals([
+        {
+          id: `fallback-1-${fallbackTimestamp}`,
+          name: 'Grilled Chicken Salad',
+          type: 'Lunch',
+          time: '12:30 PM',
+          calories: 350,
+          protein: 35,
+          carbs: 15,
+          fat: 12,
+          ingredients: ['Chicken breast', 'Mixed greens', 'Cherry tomatoes', 'Cucumber', 'Olive oil']
+        },
+        {
+          id: `fallback-2-${fallbackTimestamp}`,
+          name: 'Protein Smoothie Bowl',
+          type: 'Breakfast',
+          time: '8:00 AM',
+          calories: 280,
+          protein: 25,
+          carbs: 35,
+          fat: 8,
+          ingredients: ['Protein powder', 'Banana', 'Berries', 'Almond milk', 'Chia seeds']
+        },
+        {
+          id: `fallback-3-${fallbackTimestamp}`,
+          name: 'Quinoa Power Bowl',
+          type: 'Dinner',
+          time: '7:00 PM',
+          calories: 420,
+          protein: 28,
+          carbs: 45,
+          fat: 15,
+          ingredients: ['Quinoa', 'Black beans', 'Avocado', 'Sweet potato', 'Tahini dressing']
+        }
+      ]);
+      setMealPlanApproach('fallback');
+      setConfidenceScore(0.3);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Load data from backend on component mount
   useEffect(() => {
-    setLoading(false);
+    // Initialize error handler with router
+    ErrorHandler.initialize(router);
+    fetchPersonalizedMealPlan();
   }, []);
 
   const logMeal = async (mealId: string) => {
@@ -543,6 +788,38 @@ const NutritionScreen = () => {
     }
   };
 
+  const submitFeedback = async () => {
+    try {
+      await nutritionAPI.submitMLFeedback(
+        currentMealPlanId,
+        feedbackRating,
+        feedbackHelpful,
+        feedbackAccurate,
+        feedbackComments,
+        feedbackSuggestions,
+        true, // accepted
+        false // modified
+      );
+
+      Alert.alert('Thank You!', 'Your feedback helps us improve our recommendations.', [
+        {
+          text: 'OK', onPress: () => {
+            setShowFeedbackModal(false);
+            // Reset feedback form
+            setFeedbackRating(5);
+            setFeedbackHelpful(true);
+            setFeedbackAccurate(true);
+            setFeedbackComments('');
+            setFeedbackSuggestions('');
+          }
+        }
+      ]);
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      Alert.alert('Error', 'Failed to submit feedback. Please try again.');
+    }
+  };
+
   const filteredMeals = meals.filter(meal =>
     meal.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     meal.type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -560,6 +837,33 @@ const NutritionScreen = () => {
       case 'Dinner': return '#2196F3';
       default: return '#9C27B0';
     }
+  };
+
+  const getApproachColor = (approach: string) => {
+    switch (approach) {
+      case 'ml_based': return '#4CAF50';
+      case 'rule_based': return '#FF9800';
+      case 'hybrid': return '#2196F3';
+      case 'emergency_fallback': return '#f44336';
+      default: return '#9C27B0';
+    }
+  };
+
+  const getApproachLabel = (approach: string) => {
+    switch (approach) {
+      case 'ml_based': return 'AI Powered';
+      case 'rule_based': return 'Standard';
+      case 'hybrid': return 'Enhanced';
+      case 'emergency_fallback': return 'Basic';
+      default: return 'Unknown';
+    }
+  };
+
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence >= 0.8) return '#4CAF50';
+    if (confidence >= 0.6) return '#FF9800';
+    if (confidence >= 0.4) return '#FFC107';
+    return '#f44336';
   };
 
   if (loading) {
@@ -581,7 +885,7 @@ const NutritionScreen = () => {
           style={styles.header}
         >
           <View>
-            <Text style={styles.title}>Nutrition 🥗</Text>
+            <Text style={styles.title}>Nutrition </Text>
             <Text style={styles.subtitle}>Fuel your fitness journey</Text>
           </View>
           <TouchableOpacity
@@ -630,15 +934,42 @@ const NutritionScreen = () => {
             </View>
           </View>
 
+          {/* ML Confidence Indicator */}
+          {(mealPlanApproach !== 'unknown' && confidenceScore > 0) && (
+            <View style={[styles.mlConfidenceContainer, { backgroundColor: isDarkMode ? 'rgba(102,126,234,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(102,126,234,0.3)' : theme.border }]}>
+              <View style={styles.mlConfidenceHeader}>
+                <Text style={[styles.mlConfidenceTitle, { color: isDarkMode ? '#fff' : theme.text }]}>AI Recommendation</Text>
+                <View style={[styles.approachBadge, { backgroundColor: getApproachColor(mealPlanApproach) }]}>
+                  <Text style={styles.approachBadgeText}>{getApproachLabel(mealPlanApproach)}</Text>
+                </View>
+              </View>
+
+              <View style={styles.confidenceRow}>
+                <Text style={[styles.confidenceLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Confidence:</Text>
+                <View style={styles.confidenceBar}>
+                  <View style={[styles.confidenceFill, { width: `${confidenceScore * 100}%`, backgroundColor: getConfidenceColor(confidenceScore) }]} />
+                </View>
+                <Text style={[styles.confidenceValue, { color: isDarkMode ? '#fff' : theme.text }]}>{Math.round(confidenceScore * 100)}%</Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.feedbackButton, { backgroundColor: isDarkMode ? 'rgba(102,126,234,0.2)' : theme.cardBackground }]}
+                onPress={() => setShowFeedbackModal(true)}
+              >
+                <Text style={[styles.feedbackButtonText, { color: isDarkMode ? '#a78bfa' : theme.primary }]}>Rate this meal plan</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View style={styles.quickActionsContainer}>
             <View style={[styles.quickActionCard, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border }]}>
-              <Text style={[styles.quickActionLabel, { color: isDarkMode ? '#fff' : theme.text }]}>💧 Water Intake</Text>
+              <Text style={[styles.quickActionLabel, { color: isDarkMode ? '#fff' : theme.text }]}> Water Intake</Text>
               <View style={styles.waterButtonsRow}>
                 <TouchableOpacity
                   style={[styles.waterButton, { backgroundColor: isDarkMode ? '#667eea' : theme.primary }]}
                   onPress={removeWater}
                 >
-                  <Text style={styles.waterButtonText}>−</Text>
+                  <Text style={styles.waterButtonText}>-</Text>
                 </TouchableOpacity>
                 <Text style={[styles.waterCount, { color: isDarkMode ? '#fff' : theme.text }]}>{waterIntake}/{waterGoal}</Text>
                 <TouchableOpacity
@@ -675,7 +1006,7 @@ const NutritionScreen = () => {
                 end={{ x: 1, y: 1 }}
                 style={styles.actionButtonGradient}
               >
-                <Text style={styles.actionButtonText}>🎯 Goals</Text>
+                <Text style={styles.actionButtonText}> Goals</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -702,7 +1033,7 @@ const NutritionScreen = () => {
                         <View style={[styles.mealTypeBadge, { backgroundColor: getMealTypeColor(meal.type) }]}>
                           <Text style={styles.mealTypeText}>{meal.type}</Text>
                         </View>
-                        <Text style={[styles.mealTime, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>⏰ {meal.time}</Text>
+                        <Text style={[styles.mealTime, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}> {meal.time}</Text>
                       </View>
                     </View>
                     <View style={styles.calorieBadge}>
@@ -742,7 +1073,7 @@ const NutritionScreen = () => {
                       style={styles.logButtonGradient}
                     >
                       <Text style={styles.logButtonText}>
-                        {loggedMeals.includes(meal.id) ? 'Logged ✓' : 'Log This Meal'}
+                        {loggedMeals.includes(meal.id) ? 'Logged ' : 'Log This Meal'}
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -757,7 +1088,7 @@ const NutritionScreen = () => {
 
           {loggedMeals.length > 0 && (
             <View style={[styles.loggedMealsContainer, { backgroundColor: isDarkMode ? 'rgba(167,139,250,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(167,139,250,0.3)' : theme.border }]}>
-              <Text style={[styles.loggedMealsTitle, { color: isDarkMode ? '#fff' : theme.text }]}>📋 {"Today's"} Logged Meals ({loggedMeals.length})</Text>
+              <Text style={[styles.loggedMealsTitle, { color: isDarkMode ? '#fff' : theme.text }]}> {"Today's"} Logged Meals ({loggedMeals.length})</Text>
               <Text style={[styles.loggedCaloriesText, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Total: {totalLoggedCalories} / {calorieGoal} calories</Text>
             </View>
           )}
@@ -769,11 +1100,11 @@ const NutritionScreen = () => {
               end={{ x: 1, y: 1 }}
               style={styles.tipsGradient}
             >
-              <Text style={styles.tipsTitle}>🍎 Nutrition Tips</Text>
-              <Text style={styles.tip}>• Eat protein with every meal to support muscle growth</Text>
-              <Text style={styles.tip}>• Choose complex carbs for sustained energy</Text>
-              <Text style={styles.tip}>• Stay hydrated - aim for 8 glasses of water daily</Text>
-              <Text style={styles.tip}>• Time your meals around your workouts for optimal performance</Text>
+              <Text style={styles.tipsTitle}> Nutrition Tips</Text>
+              <Text style={styles.tip}> Eat protein with every meal to support muscle growth</Text>
+              <Text style={styles.tip}> Choose complex carbs for sustained energy</Text>
+              <Text style={styles.tip}> Stay hydrated - aim for 8 glasses of water daily</Text>
+              <Text style={styles.tip}> Time your meals around your workouts for optimal performance</Text>
             </LinearGradient>
           </View>
 
@@ -889,9 +1220,121 @@ const NutritionScreen = () => {
               </View>
             </View>
           </Modal>
+
+          {/* Feedback Modal */}
+          <Modal
+            visible={showFeedbackModal}
+            transparent={true}
+            animationType="fade"
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: isDarkMode ? '#1a1f2e' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.border }]}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Rate Your Meal Plan</Text>
+
+                <View style={styles.goalInputContainer}>
+                  <Text style={[styles.goalLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Overall Rating</Text>
+                  <View style={styles.ratingContainer}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <TouchableOpacity
+                        key={star}
+                        onPress={() => setFeedbackRating(star)}
+                        style={styles.starButton}
+                      >
+                        <Text style={[styles.starText, { color: star <= feedbackRating ? '#FFD700' : 'rgba(255,255,255,0.3)' }]}>
+                          {star <= feedbackRating ? 'star' : 'star_border'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.goalInputContainer}>
+                  <Text style={[styles.goalLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Was this helpful?</Text>
+                  <View style={styles.booleanContainer}>
+                    <TouchableOpacity
+                      style={[styles.booleanButton, feedbackHelpful && styles.booleanButtonActive, feedbackHelpful && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                      onPress={() => setFeedbackHelpful(true)}
+                    >
+                      <Text style={[styles.booleanButtonText, { color: feedbackHelpful ? '#fff' : theme.text }]}>Yes</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.booleanButton, !feedbackHelpful && styles.booleanButtonActive, !feedbackHelpful && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                      onPress={() => setFeedbackHelpful(false)}
+                    >
+                      <Text style={[styles.booleanButtonText, { color: !feedbackHelpful ? '#fff' : theme.text }]}>No</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.goalInputContainer}>
+                  <Text style={[styles.goalLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Was it accurate?</Text>
+                  <View style={styles.booleanContainer}>
+                    <TouchableOpacity
+                      style={[styles.booleanButton, feedbackAccurate && styles.booleanButtonActive, feedbackAccurate && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                      onPress={() => setFeedbackAccurate(true)}
+                    >
+                      <Text style={[styles.booleanButtonText, { color: feedbackAccurate ? '#fff' : theme.text }]}>Yes</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.booleanButton, !feedbackAccurate && styles.booleanButtonActive, !feedbackAccurate && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                      onPress={() => setFeedbackAccurate(false)}
+                    >
+                      <Text style={[styles.booleanButtonText, { color: !feedbackAccurate ? '#fff' : theme.text }]}>No</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.goalInputContainer}>
+                  <Text style={[styles.goalLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Comments (optional)</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border, color: theme.text, height: 80 }]}
+                    placeholder="Tell us what you thought..."
+                    placeholderTextColor={isDarkMode ? "#999" : theme.textSecondary}
+                    multiline
+                    value={feedbackComments}
+                    onChangeText={setFeedbackComments}
+                  />
+                </View>
+
+                <View style={styles.goalInputContainer}>
+                  <Text style={[styles.goalLabel, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : theme.textSecondary }]}>Suggestions (optional)</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border, color: theme.text, height: 80 }]}
+                    placeholder="How can we improve your recommendations?"
+                    placeholderTextColor={isDarkMode ? "#999" : theme.textSecondary}
+                    multiline
+                    value={feedbackSuggestions}
+                    onChangeText={setFeedbackSuggestions}
+                  />
+                </View>
+
+                <View style={styles.modalButtonsRow}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : theme.cardBackground, borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : theme.border }]}
+                    onPress={() => setShowFeedbackModal(false)}
+                  >
+                    <Text style={[styles.modalButtonText, { color: theme.text }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonPrimary]}
+                    onPress={submitFeedback}
+                  >
+                    <LinearGradient
+                      colors={isDarkMode ? ['#667eea', '#764ba2'] : [theme.primary, theme.primaryDark]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.modalButtonGradient}
+                    >
+                      <Text style={[styles.modalButtonText, { color: '#fff' }]}>Submit</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </ScrollView>
       </SafeAreaView>
-    </View >
+    </View>
   );
 };
 

@@ -57,11 +57,11 @@ const MedicalConditionsScreen = () => {
     console.log('Selected conditions:', selectedConditions);
 
     // Navigate to final onboarding step
-    router.push('/onboarding/workout-preferences');
+    router.push('/onboarding/personalizing');
   };
 
   const handleSkip = () => {
-    router.push('/onboarding/workout-preferences');
+    router.push('/onboarding/personalizing');
   };
 
   if (hasConditions === null) {

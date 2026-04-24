@@ -204,8 +204,17 @@ export class AIService {
       const response = await apiService.generateMealPlan();
       console.log('✅ Meal plan generated:', response);
       return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to generate meal plan:', error);
+
+      // Check if this is an authentication error
+      if (error?.message?.includes('Authentication expired') ||
+        error?.body?.code === 'AUTH_EXPIRED' ||
+        error?.body?.requires_relogin) {
+        console.log('🔐 Authentication expired in AI service');
+        throw new Error('AUTH_EXPIRED');
+      }
+
       throw error;
     }
   }
