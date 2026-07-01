@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from './ThemeContext';
+import { useOnboarding } from './OnboardingContext';
 import { apiService } from '../../services/api';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -37,6 +38,7 @@ interface ProgressData {
 const ProgressEntryScreen = () => {
   const router = useRouter();
   const { theme } = useTheme();
+  const { setLastProgressEntryDate } = useOnboarding();
 
   const [progressData, setProgressData] = useState<ProgressData>({
     date: new Date().toISOString().split('T')[0],
@@ -117,10 +119,13 @@ const ProgressEntryScreen = () => {
       // Submit to backend
       await apiService.createProgressEntry(progressData);
 
+      // Save last progress entry date
+      setLastProgressEntryDate(progressData.date);
+
       Alert.alert(
         'Success!',
         'Your progress has been logged successfully.',
-        [{ text: 'OK', onPress: () => router.back() }]
+        [{ text: 'OK', onPress: () => router.replace('/Zoefit/home') }]
       );
     } catch (error) {
       console.error('Error submitting progress:', error);
@@ -157,10 +162,13 @@ const ProgressEntryScreen = () => {
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.replace('/Zoefit/home')}>
             <Text style={styles.backButton}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Log Progress</Text>
+          <View>
+            <Text style={styles.headerTitle}>Weekly Progress Check-in</Text>
+            <Text style={styles.headerSubtitle}>Track your progress to get better recommendations</Text>
+          </View>
           <View style={{ width: 40 }} />
         </LinearGradient>
 
@@ -327,6 +335,15 @@ const ProgressEntryScreen = () => {
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity
+              style={[styles.skipButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+              onPress={() => router.replace('/Zoefit/home')}
+            >
+              <Text style={[styles.skipButtonText, { color: theme.textSecondary }]}>
+                Skip for now
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.submitButton, { backgroundColor: theme.primary, opacity: isSubmitting ? 0.6 : 1 }]}
               onPress={handleSubmit}
               disabled={isSubmitting}
@@ -441,6 +458,11 @@ const styles = StyleSheet.create({
     textShadowColor: '#047857',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
   scrollView: {
     flex: 1,
@@ -652,6 +674,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  skipButton: {
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  skipButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,

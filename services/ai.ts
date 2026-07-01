@@ -23,8 +23,17 @@ export class AIService {
       const response = await apiService.createOrUpdateHealthMetrics(data);
       console.log('✅ Health metrics updated successfully:', response);
       return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to update health metrics:', error);
+
+      // Check if this is an authentication error
+      if (error?.message?.includes('Authentication expired') ||
+        error?.body?.code === 'AUTH_EXPIRED' ||
+        error?.body?.requires_relogin) {
+        console.log('🔐 Authentication expired in AI service');
+        throw new Error('AUTH_EXPIRED');
+      }
+
       throw error;
     }
   }
@@ -40,6 +49,14 @@ export class AIService {
       return response;
     } catch (error: any) {
       console.error('❌ Failed to fetch health metrics:', error);
+
+      // Check if this is an authentication error
+      if (error?.message?.includes('Authentication expired') ||
+        error?.body?.code === 'AUTH_EXPIRED' ||
+        error?.body?.requires_relogin) {
+        console.log('🔐 Authentication expired in AI service');
+        throw new Error('AUTH_EXPIRED');
+      }
 
       // If no health metrics exist, create default ones
       if (error.message?.includes('No HealthMetrics matches the given query')) {

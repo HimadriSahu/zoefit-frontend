@@ -76,6 +76,7 @@ export interface WorkoutPlan {
   estimated_duration: number;
   difficulty_level: string;
   intensity_score: number;
+  equipment_needed: string[];
   completed: boolean;
   completion_time?: string;
   user_rating?: number;
@@ -219,7 +220,7 @@ class ApiService {
   private isRefreshing: boolean = false;
   private refreshSubscribers: Array<(token: string | null) => void> = [];
   private retryCount: number = 0;
-  private maxRetries: number = 2;
+  private maxRetries: number = 1; // Reduced retries to prevent excessive connection attempts
   private lastWorkingURL: string | null = null;
   private failedURLs: Set<string> = new Set();
 
@@ -381,12 +382,17 @@ class ApiService {
 
     console.log('🌐 API Request:', { url, method: options.method || 'GET', useAuth });
 
+    // Add timeout to prevent hanging requests - increased for better reliability
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
       ...options,
+      signal: controller.signal,
     };
 
     // Add authorization header if required
@@ -394,7 +400,13 @@ class ApiService {
       const token = await this.getAuthToken();
       if (token) {
         // Check if token is close to expiration (proactive refresh)
-        await this.checkAndRefreshTokenIfNeeded(token);
+        try {
+          await this.checkAndRefreshTokenIfNeeded(token);
+        } catch (refreshError) {
+          console.warn('⚠️ Proactive token refresh failed:', refreshError);
+          // Continue with current token if refresh fails
+        }
+
         const freshToken = await this.getAuthToken();
         if (freshToken) {
           config.headers = {
@@ -416,6 +428,7 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
+      clearTimeout(timeoutId);
       console.log('📡 API Response Status:', response.status);
 
       let data: any;
@@ -441,15 +454,20 @@ class ApiService {
           if (newToken) {
             console.log('🔄 Retrying request with new token...');
             // Retry the request with the new token
+            const retryController = new AbortController();
+            const retryTimeoutId = setTimeout(() => retryController.abort(), 15000); // 15 second timeout for retry
+
             const retryConfig: RequestInit = {
               ...config,
               headers: {
                 ...config.headers,
                 'Authorization': `Bearer ${newToken}`,
               },
+              signal: retryController.signal,
             };
 
             const retryResponse = await fetch(url, retryConfig);
+            clearTimeout(retryTimeoutId);
             console.log('📡 Retry Response Status:', retryResponse.status);
 
             let retryData: any;
@@ -504,7 +522,16 @@ class ApiService {
 
       return data as T;
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('❌ API Error:', error);
+
+      // Handle abort errors specifically
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new ApiError('Request timed out. Please check your connection and try again.', undefined, {
+          error: 'Timeout',
+          detail: 'The request took too long to complete'
+        });
+      }
 
       // Enhanced error handling for different error types
       if (error instanceof ApiError) {
@@ -517,7 +544,7 @@ class ApiService {
         if (error.message.includes('Network request failed') || error.message.includes('fetch')) {
           console.warn('🌐 Network error detected, attempting reconnection...');
 
-          // Only retry if we haven't exceeded max retries
+          // Only retry if we haven't exceeded max retries (reduced to be less aggressive)
           if (this.retryCount < this.maxRetries) {
             this.retryCount++;
             console.log(`🔄 Network error detected, trying to reconnect... (${this.retryCount}/${this.maxRetries})`);
@@ -527,6 +554,15 @@ class ApiService {
               if (newUrl !== this.baseURL) {
                 this.baseURL = newUrl;
                 console.log('🔄 Retrying with new URL:', this.baseURL);
+
+                // Retry the request with the new URL and timeout
+                const retryController = new AbortController();
+                const retryTimeoutId = setTimeout(() => retryController.abort(), 12000); // 12 second timeout
+
+                const retryConfig: RequestInit = {
+                  ...config,
+                  signal: retryController.signal,
+                };
 
                 // Retry the request with the new URL
                 let retryBaseUrl: string;
@@ -541,7 +577,9 @@ class ApiService {
                 }
 
                 const retryUrl = isAuthEndpoint ? `${retryBaseUrl}${endpoint.replace('/auth/', '/')}` : `${retryBaseUrl}${endpoint}`;
-                const response = await fetch(retryUrl, config);
+                const response = await fetch(retryUrl, retryConfig);
+                clearTimeout(retryTimeoutId);
+
                 const text = await response.text();
                 let data: any = {};
                 try {
@@ -756,43 +794,72 @@ class ApiService {
 
       console.log('🔄 Refreshing access token...');
 
-      // Use the auth endpoint directly for token refresh
-      const url = `${this.baseURL}/api/auth/token/refresh/`;
-      const config: RequestInit = {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refresh: refreshToken }),
-      };
+      // Add timeout to prevent hanging - increased for token refresh
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      const response = await fetch(url, config);
-      console.log('📡 Token Refresh Response Status:', response.status);
-
-      let data: any;
       try {
-        const text = await response.text();
-        if (text && response.headers.get('content-type')?.includes('application/json')) {
-          data = JSON.parse(text);
-        } else {
-          data = text ? { detail: text.slice(0, 200) } : {};
+        // Use the auth endpoint directly for token refresh
+        const url = `${this.baseURL}/api/auth/token/refresh/`;
+        const config: RequestInit = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refresh: refreshToken }),
+          signal: controller.signal,
+        };
+
+        const response = await fetch(url, config);
+        clearTimeout(timeoutId);
+
+        console.log('📡 Token Refresh Response Status:', response.status);
+
+        let data: any;
+        try {
+          const text = await response.text();
+          if (text && response.headers.get('content-type')?.includes('application/json')) {
+            data = JSON.parse(text);
+          } else {
+            data = text ? { detail: text.slice(0, 200) } : {};
+          }
+        } catch (_) {
+          data = { detail: 'Invalid response from server' };
         }
-      } catch (_) {
-        data = { detail: 'Invalid response from server' };
+        console.log('📊 Token Refresh Response Data:', data);
+
+        if (!response.ok) {
+          // If refresh token is also expired/invalid, clear all auth data
+          if (response.status === 401) {
+            console.log('🚨 Refresh token expired, clearing all auth data');
+            await this.clearAuthData();
+            this.notifySubscribers(null);
+            throw new ApiError('Authentication expired. Please log in again.', 401, {
+              code: 'AUTH_EXPIRED',
+              detail: 'Your session has expired. Please log in again to continue.',
+              requires_relogin: true
+            });
+          }
+          throw new ApiError(data?.detail || data?.error || 'Token refresh failed', response.status, data);
+        }
+
+        // Store the new access token
+        await AsyncStorage.setItem('access_token', data.access);
+        console.log('✅ Access token refreshed successfully');
+
+        // Notify all waiting subscribers
+        this.notifySubscribers(data.access);
+        return data.access;
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+
+        if (fetchError.name === 'AbortError') {
+          console.error('❌ Token refresh timed out');
+          this.notifySubscribers(null);
+          return null;
+        }
+        throw fetchError;
       }
-      console.log('📊 Token Refresh Response Data:', data);
-
-      if (!response.ok) {
-        throw new ApiError(data?.detail || data?.error || 'Token refresh failed', response.status, data);
-      }
-
-      // Store the new access token
-      await AsyncStorage.setItem('access_token', data.access);
-      console.log('✅ Access token refreshed successfully');
-
-      // Notify all waiting subscribers
-      this.notifySubscribers(data.access);
-      return data.access;
     } catch (error: any) {
       console.error('❌ Token refresh failed:', error);
 
@@ -801,7 +868,13 @@ class ApiService {
         error?.message?.includes('Token is invalid') ||
         error?.message?.includes('Given token not valid') ||
         error?.message?.includes('Invalid token') ||
+        error?.message?.includes('Token is expired') ||
         error?.status === 401;
+
+      const isNetworkError = error?.message?.includes('Network request failed') ||
+        error?.message?.includes('fetch') ||
+        error?.name === 'TypeError' ||
+        error instanceof TypeError;
 
       if (isBlacklistedError) {
         console.log('🧹 Token is invalid/blacklisted, clearing all auth data');
@@ -815,9 +888,13 @@ class ApiService {
           detail: 'Your session has expired. Please log in again to continue.',
           requires_relogin: true
         });
-      } else {
+      } else if (isNetworkError) {
         console.log('⚠️ Token refresh failed due to network issues, keeping existing tokens');
         // For network issues, don't clear tokens and let retry mechanism handle it
+        this.notifySubscribers(null);
+        return null;
+      } else {
+        console.log('⚠️ Token refresh failed due to unknown error');
         this.notifySubscribers(null);
         return null;
       }
@@ -836,14 +913,32 @@ class ApiService {
   private async checkAndRefreshTokenIfNeeded(token: string): Promise<void> {
     try {
       // Parse JWT token to check expiration
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.warn('⚠️ Invalid JWT token format');
+        return;
+      }
+
+      const payload = JSON.parse(atob(parts[1]));
       const currentTime = Math.floor(Date.now() / 1000);
       const timeUntilExpiry = payload.exp - currentTime;
 
-      // Refresh if token expires within 5 minutes (300 seconds)
-      if (timeUntilExpiry < 300) {
-        console.log('⏰ Token expires soon, proactively refreshing...');
+      // Refresh if token expires within 5 minutes (300 seconds) or is already expired
+      if (timeUntilExpiry < 300 || timeUntilExpiry < 0) {
+        console.log(`⏰ Token expires in ${timeUntilExpiry}s, proactively refreshing...`);
+        // If token is already expired, clear it and force re-login
+        if (timeUntilExpiry < 0) {
+          console.log('🚨 Token already expired, clearing and forcing re-login');
+          await this.clearAuthData();
+          throw new ApiError('Authentication expired. Please log in again.', 401, {
+            code: 'AUTH_EXPIRED',
+            detail: 'Your session has expired. Please log in again to continue.',
+            requires_relogin: true
+          });
+        }
         await this.refreshAuthToken();
+      } else {
+        console.log(`✅ Token valid for ${timeUntilExpiry}s, no refresh needed`);
       }
     } catch (error) {
       console.warn('⚠️ Could not parse token for expiration check:', error);
@@ -866,7 +961,7 @@ class ApiService {
       return await this.request<HealthMetricsResponse>('/health-metrics/get/', {}, true);
     } catch (error: any) {
       console.error('❌ Error fetching health metrics:', error);
-      
+
       // For any error (network, auth, etc.), return default values to prevent undefined errors
       console.log('📊 Using default health metrics due to error');
       return {

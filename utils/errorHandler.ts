@@ -39,19 +39,31 @@ export class ErrorHandler {
     return (
       error?.message?.includes('Authentication expired') ||
       error?.message === 'AUTH_EXPIRED' ||
+      error?.message?.includes('AUTH_EXPIRED') ||
       error?.body?.code === 'AUTH_EXPIRED' ||
       error?.body?.requires_relogin ||
       error?.code === 'AUTH_EXPIRED' ||
-      error?.requires_relogin === true
+      error?.requires_relogin === true ||
+      error?.status === 401 ||
+      (typeof error === 'string' && error === 'AUTH_EXPIRED') ||
+      error?.message?.includes('Token is blacklisted') ||
+      error?.message?.includes('Token is expired') ||
+      error?.message?.includes('Given token not valid') ||
+      error?.message?.includes('Authentication credentials were not provided')
     );
   }
 
   public static isNetworkError(error: any): boolean {
     return (
       error?.message?.includes('Network connection failed') ||
+      error?.message?.includes('Network request failed') ||
       error?.message?.includes('fetch') ||
       error?.message?.includes('timeout') ||
-      error?.isNetworkError === true
+      error?.message?.includes('AbortError') ||
+      error?.name === 'TypeError' ||
+      error instanceof TypeError ||
+      error?.isNetworkError === true ||
+      error?.type === 'network'
     );
   }
 
@@ -66,7 +78,8 @@ export class ErrorHandler {
           text: 'Login',
           onPress: () => {
             if (this.router) {
-              this.router.push('/login' as any);
+              // Use replace to prevent going back to authenticated screens
+              this.router.replace('/LoginScreen' as any);
             } else {
               console.warn('Router not initialized in ErrorHandler');
             }

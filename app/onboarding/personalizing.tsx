@@ -17,7 +17,7 @@ export default function PersonalizingScreen() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
-  const { data: onboardingData } = useOnboarding();
+  const { data: onboardingData, setOnboardingCompleted, setLastProgressEntryDate } = useOnboarding();
 
   const steps = [
     'Analyzing your profile...',
@@ -99,15 +99,19 @@ export default function PersonalizingScreen() {
 
     // Mark onboarding as completed locally
     await authService.setOnboardingCompleted(true);
+    setOnboardingCompleted(true);
+
+    // Set initial progress entry date to start the weekly timer
+    setLastProgressEntryDate(new Date().toISOString().split('T')[0]);
 
     // Show success confirmation
     Alert.alert(
       'Setup Complete!',
       'Your profile has been successfully set up. Welcome to ZoeFit!',
-      [{ text: 'Get Started', onPress: () => router.replace('/screens/welcomePage') }]
+      [{ text: 'Get Started', onPress: () => router.replace('/Zoefit/home') }]
     );
 
-    router.replace('/screens/welcomePage');
+    router.replace('/Zoefit/home');
   };
 
   return (

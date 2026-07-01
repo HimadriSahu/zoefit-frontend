@@ -5,24 +5,20 @@ const API_CONFIG = {
   // Production URL
   production: 'https://your-production-api.com',
 
-  // Development URLs in order of preference
+  // Development URLs in order of preference (mobile-friendly)
   development: [
-    'http://192.168.1.6:8000', // Current working machine IP (try first)
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-    'http://192.168.29.36:8000',
-    'http://10.169.81.35:8000', // Android emulator → host machine localhost
-    'http://172.23.148.1:8000', // Common local network
-    'http://10.45.13.21:8000',
-    'http://192.168.0.192:8000', // Alternative network IP
+    'http://192.168.29.209:8000', // External IP - primary for mobile
+    'http://10.190.254.221:8000', // Android emulator → host machine localhost
+    'http://127.0.0.1:8000', // Localhost - for web/simulator
+    'http://localhost:8000', // Alternative localhost
   ],
 
   // Timeout settings
-  timeout: 3000, // Reduced timeout for faster failover
+  timeout: 30000, // Increased to 30 seconds for login requests
 
   // Retry settings
-  maxRetries: 2, // Reduced retries for faster failover
-  retryDelay: 500, // Reduced delay
+  maxRetries: 2, // Reduced retries to prevent long delays
+  retryDelay: 500, // Shorter delay between retries
 
   // Network detection settings
   networkDetectionInterval: 30000, // Check network every 30 seconds
@@ -68,7 +64,7 @@ export const getApiBaseUrl = async (): Promise<string> => {
   }
 
   // If all URLs fail, use platform-appropriate fallback
-  const fallback = isAndroid ? 'http://192.168.0.192:8000' : API_CONFIG.development[2]; // localhost for non-Android
+  const fallback = isAndroid ? 'http://192.168.1.9:8000' : 'http://127.0.0.1:8000'; // external IP for Android, localhost for others
   console.warn('⚠️ All API URLs failed, using fallback:', fallback);
   return fallback;
 };
@@ -79,17 +75,8 @@ export const getApiBaseUrlSync = (): string => {
     return API_CONFIG.production;
   }
 
-  // Return the most likely working URL based on platform and network patterns
-  if (isAndroid) {
-    // Android emulator typically uses 10.0.2.2 for host, but also try common network IPs
-    return 'http://192.168.1.6:8000'; // Working network IP
-  } else if (isIOS) {
-    // iOS simulator uses localhost
-    return 'http://192.168.1.6:8000'; // Working network IP
-  } else {
-    // Web/other - try the working IP first
-    return 'http://192.168.1.6:8000';
-  }
+  // Return external IP for mobile development
+  return 'http://192.168.1.9:8000';
 };
 
 // Export utility function to test connectivity

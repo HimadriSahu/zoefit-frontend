@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "scheme": "app",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },

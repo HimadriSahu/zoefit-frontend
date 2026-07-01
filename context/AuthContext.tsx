@@ -42,6 +42,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } catch (error) {
       console.error('Auth check failed:', error);
+      // Check if it's an auth expired error
+      if (error instanceof ApiError && error.status === 401 && (error as any).code === 'AUTH_EXPIRED') {
+        console.log('🚨 Authentication expired, redirecting to login');
+        await authService.clearStorage();
+        setIsAuthenticated(false);
+        setUser(null);
+        router.replace('/LoginScreen');
+        return;
+      }
       await authService.clearStorage();
       setIsAuthenticated(false);
       setUser(null);
@@ -95,6 +104,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } catch (error) {
       console.error('Auth refresh failed:', error);
+      // Check if it's an auth expired error
+      if (error instanceof ApiError && error.status === 401 && (error as any).code === 'AUTH_EXPIRED') {
+        console.log('🚨 Authentication expired during refresh, redirecting to login');
+        await authService.clearStorage();
+        setIsAuthenticated(false);
+        setUser(null);
+        router.replace('/LoginScreen');
+        return;
+      }
       await authService.clearStorage();
       setIsAuthenticated(false);
       setUser(null);
@@ -108,36 +126,61 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Only set up error handlers in web environment
     if (typeof window !== 'undefined' && window.addEventListener) {
       const handleAuthError = (event: ErrorEvent) => {
-        if (event.error instanceof ApiError) {
-          const apiError = event.error as ApiError;
+        const error = event.error;
 
-          // Check if it's an authentication error
-          if (apiError.status === 401 || apiError.body?.code === 'AUTH_EXPIRED') {
-            console.log('🔐 Authentication error detected, logging out...');
-            // Clear any remaining auth data
-            authService.clearStorage?.().catch(() => { });
-            setIsAuthenticated(false);
-            setUser(null);
-            // Redirect to login screen
-            router.replace('/LoginScreen');
-          }
+        // Check for different types of authentication errors
+        const isAuthError = error instanceof ApiError && (
+          error.status === 401 ||
+          error.body?.code === 'AUTH_EXPIRED' ||
+          error.body?.requires_relogin ||
+          error.message?.includes('Authentication expired') ||
+          error.message?.includes('AUTH_EXPIRED')
+        );
+
+        const isStringAuthError = typeof error === 'string' && error === 'AUTH_EXPIRED';
+
+        if (isAuthError || isStringAuthError) {
+          console.log('🔐 Authentication error detected, logging out...', error);
+          handleAuthLogout();
         }
       };
 
       // Listen for unhandled promise rejections
       const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-        if (event.reason instanceof ApiError) {
-          const apiError = event.reason as ApiError;
+        const error = event.reason;
 
-          if (apiError.status === 401 || apiError.body?.code === 'AUTH_EXPIRED') {
-            console.log('🔐 Authentication error in promise, logging out...');
-            // Clear any remaining auth data
-            authService.clearStorage?.().catch(() => { });
-            setIsAuthenticated(false);
-            setUser(null);
-            // Redirect to login screen
-            router.replace('/LoginScreen');
-          }
+        // Check for different types of authentication errors
+        const isAuthError = error instanceof ApiError && (
+          error.status === 401 ||
+          error.body?.code === 'AUTH_EXPIRED' ||
+          error.body?.requires_relogin ||
+          error.message?.includes('Authentication expired') ||
+          error.message?.includes('AUTH_EXPIRED')
+        );
+
+        const isStringAuthError = typeof error === 'string' && error === 'AUTH_EXPIRED';
+
+        if (isAuthError || isStringAuthError) {
+          console.log('🔐 Authentication error in promise, logging out...', error);
+          handleAuthLogout();
+        }
+      };
+
+      // Centralized logout handler
+      const handleAuthLogout = async () => {
+        try {
+          console.log('🧹 Clearing authentication data due to auth error');
+          await authService.clearStorage?.();
+          setIsAuthenticated(false);
+          setUser(null);
+          // Redirect to login screen
+          router.replace('/LoginScreen');
+        } catch (logoutError) {
+          console.error('Error during auth logout:', logoutError);
+          // Force logout even if clearing storage fails
+          setIsAuthenticated(false);
+          setUser(null);
+          router.replace('/LoginScreen');
         }
       };
 

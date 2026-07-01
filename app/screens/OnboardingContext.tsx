@@ -17,6 +17,8 @@ export interface OnboardingData {
   allergies: string[] | null;
   targetWeight: number | null;
   equipmentAvailable: string[] | null;
+  onboardingCompleted: boolean | null;
+  lastProgressEntryDate: string | null;
 }
 
 const defaultData: OnboardingData = {
@@ -32,6 +34,8 @@ const defaultData: OnboardingData = {
   allergies: null,
   targetWeight: null,
   equipmentAvailable: null,
+  onboardingCompleted: null,
+  lastProgressEntryDate: null,
 };
 
 interface OnboardingContextType {
@@ -48,8 +52,11 @@ interface OnboardingContextType {
   setAllergies: (a: string[]) => void;
   setTargetWeight: (t: number) => void;
   setEquipmentAvailable: (e: string[]) => void;
+  setOnboardingCompleted: (completed: boolean) => void;
+  setLastProgressEntryDate: (date: string) => void;
   reset: () => Promise<void>;
   isOnboardingComplete: () => boolean;
+  shouldShowWeeklyProgress: () => boolean;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | null>(null);
@@ -108,6 +115,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const setAllergies = (allergies: string[]) => setData((p) => ({ ...p, allergies }));
   const setTargetWeight = (targetWeight: number) => setData((p) => ({ ...p, targetWeight }));
   const setEquipmentAvailable = (equipmentAvailable: string[]) => setData((p) => ({ ...p, equipmentAvailable }));
+  const setOnboardingCompleted = (onboardingCompleted: boolean) => setData((p) => ({ ...p, onboardingCompleted }));
+  const setLastProgressEntryDate = (lastProgressEntryDate: string) => setData((p) => ({ ...p, lastProgressEntryDate }));
   const reset = async () => {
     setData(defaultData);
     try {
@@ -118,13 +127,19 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   };
 
   const isOnboardingComplete = (): boolean => {
-    return !!(
-      data.gender &&
-      data.birthday &&
-      data.heightCm &&
-      data.weightKg &&
-      data.goal
-    );
+    return !!data.onboardingCompleted;
+  };
+
+  const shouldShowWeeklyProgress = (): boolean => {
+    if (!data.lastProgressEntryDate) {
+      return false; // Never submitted progress - don't show immediately
+    }
+
+    const lastEntry = new Date(data.lastProgressEntryDate);
+    const today = new Date();
+    const daysDiff = Math.floor((today.getTime() - lastEntry.getTime()) / (1000 * 60 * 60 * 24));
+
+    return daysDiff >= 7; // Show if 7 or more days have passed
   };
 
   return (
@@ -143,8 +158,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         setAllergies,
         setTargetWeight,
         setEquipmentAvailable,
+        setOnboardingCompleted,
+        setLastProgressEntryDate,
         reset,
         isOnboardingComplete,
+        shouldShowWeeklyProgress,
       }}
     >
       {children}

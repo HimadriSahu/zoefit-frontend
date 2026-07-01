@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
 
 export default function Index() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const { isOnboardingComplete } = useOnboarding();
+  const { isOnboardingComplete, shouldShowWeeklyProgress } = useOnboarding();
 
   if (isLoading) {
     return (
@@ -61,8 +61,13 @@ export default function Index() {
       return <Redirect href="/onboarding" />;
     }
 
-    // If onboarding is complete, redirect to welcome page
-    return <Redirect href="/screens/welcomePage" />;
+    // Check if weekly progress is needed (only if it's been more than 7 days)
+    if (shouldShowWeeklyProgress()) {
+      return <Redirect href="/screens/progress-entry" />;
+    }
+
+    // If onboarding is complete and no progress needed, redirect to home page
+    return <Redirect href="/Zoefit/home" />;
   }
 
   return <Redirect href="/LoginScreen" />;
